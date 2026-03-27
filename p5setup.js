@@ -126,19 +126,14 @@ export function setupP5() {
       w = Math.max(1, Math.round(w));
       h = Math.max(1, Math.round(h));
 
-      // Use native HTML canvas to prevent absolutely any pixelDensity or retina scaling bugs from P5.js abstractions
-      const offscreenCanvas = document.createElement('canvas');
-      offscreenCanvas.width = w;
-      offscreenCanvas.height = h;
-      const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
+      const pg = p.createGraphics(w, h);
+      pg.pixelDensity(1);
+      pg.image(img, 0, 0, w, h);
+      pg.loadPixels();
       
-      // img.canvas contains the underlying pixel data in p5
-      ctx.drawImage(img.canvas || img.elt, 0, 0, w, h);
-      const imgData = ctx.getImageData(0, 0, w, h);
-      
-      if (!imgData || imgData.data.length === 0) return;
+      if (pg.pixels.length === 0) return;
 
-      const inPointContainer = utils.PointContainer.fromUint8Array(imgData.data, w, h);
+      const inPointContainer = utils.PointContainer.fromUint8Array(pg.pixels, w, h);
 
       const palette = buildPaletteSync([inPointContainer], {
         colors: AppState.colorCount,
@@ -161,6 +156,7 @@ export function setupP5() {
         rows: h
       };
 
+      pg.remove();
       p.redraw();
     }
 

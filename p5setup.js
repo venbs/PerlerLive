@@ -130,14 +130,14 @@ export function setupP5() {
       w = Math.max(1, Math.round(w));
       h = Math.max(1, Math.round(h));
 
-      const pg = p.createGraphics(w, h);
-      pg.pixelDensity(1);
-      pg.image(img, 0, 0, w, h);
-      pg.loadPixels();
+      // Clone original image and resize to avoid pixelDensity bugs of createGraphics
+      const resizedImg = img.get();
+      resizedImg.resize(w, h);
+      resizedImg.loadPixels();
       
-      if (pg.pixels.length === 0) return;
+      if (!resizedImg.pixels || resizedImg.pixels.length === 0) return;
 
-      const inPointContainer = utils.PointContainer.fromUint8Array(pg.pixels, w, h);
+      const inPointContainer = utils.PointContainer.fromUint8Array(resizedImg.pixels, w, h);
 
       const palette = buildPaletteSync([inPointContainer], {
         colors: AppState.colorCount,
@@ -160,7 +160,6 @@ export function setupP5() {
         rows: h
       };
 
-      pg.remove();
       p.redraw();
     }
 

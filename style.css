@@ -35,17 +35,18 @@ body {
   width: 100vw;
   height: 100vh;
   z-index: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   background-color: #fcfcfc;
   background-image: radial-gradient(#d5d5d5 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 #canvas-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
   box-shadow: 0 16px 40px rgba(0,0,0,0.04);
-  border-radius: 4px;
 }
 
 #ui-panel {

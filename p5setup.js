@@ -29,7 +29,6 @@ export function setupP5() {
       const canvas = p.createCanvas(window.innerWidth, window.innerHeight);
       canvas.parent('canvas-container');
       p.noLoop(); // We only redraw on changes
-      p.pixelDensity(1); 
       
       AppState.exportPNG = () => {
          p.saveCanvas('perler_studio', 'png');

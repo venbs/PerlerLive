@@ -130,14 +130,19 @@ export function setupP5() {
       w = Math.max(1, Math.round(w));
       h = Math.max(1, Math.round(h));
 
-      // Clone original image and resize to avoid pixelDensity bugs of createGraphics
-      const resizedImg = img.get();
-      resizedImg.resize(w, h);
-      resizedImg.loadPixels();
+      // Use native HTML canvas to prevent absolutely any pixelDensity or retina scaling bugs from P5.js abstractions
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = w;
+      offscreenCanvas.height = h;
+      const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
       
-      if (!resizedImg.pixels || resizedImg.pixels.length === 0) return;
+      // img.canvas contains the underlying pixel data in p5
+      ctx.drawImage(img.canvas || img.elt, 0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, w, h);
+      
+      if (!imgData || imgData.data.length === 0) return;
 
-      const inPointContainer = utils.PointContainer.fromUint8Array(resizedImg.pixels, w, h);
+      const inPointContainer = utils.PointContainer.fromUint8Array(imgData.data, w, h);
 
       const palette = buildPaletteSync([inPointContainer], {
         colors: AppState.colorCount,

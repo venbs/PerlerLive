@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>PerlerStudio</title>
+    <meta name="theme-color" content="#ffffff">
+  </head>
+  <body>
+    <!-- P5.js Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Floating UI Panel -->
+    <div id="ui-panel">
+      <!-- Logo -->
+      <div class="logo">
+        <img src="/src/assets/PerlerStudio.svg" alt="PerlerStudio Logo" />
+      </div>
+
+      <!-- Controls -->
+      <div class="control-group">
+        <label for="image-upload" class="upload-btn">
+          导入图片
+        </label>
+        <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" style="display: none;" />
+      </div>
+
+      <div class="control-group">
+        <label>分辨率 <span class="val" id="resolution-val">64px</span></label>
+        <input type="range" id="resolution" min="16" max="256" value="64" step="8" />
+      </div>
+
+      <div class="control-group">
+        <label>颜色数量</label>
+        <div class="radio-group" id="color-count-group">
+          <label><input type="radio" name="colors" value="4">4</label>
+          <label><input type="radio" name="colors" value="8">8</label>
+          <label><input type="radio" name="colors" value="16" checked>16</label>
+          <label><input type="radio" name="colors" value="32">32</label>
+        </div>
+        <div id="palette-container" class="palette-container">
+          <!-- Swatches dynamically generated here -->
+        </div>
+      </div>
+
+      <div class="control-group inline">
+        <label>平滑抖动</label>
+        <label class="switch">
+          <input type="checkbox" id="dithering" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="control-group">
+        <label>拼豆样式</label>
+        <div class="style-row">
+          <label>圆角 <span class="val" id="border-radius-val">50%</span></label>
+          <input type="range" id="border-radius" min="0" max="100" value="50" />
+        </div>
+        <div class="style-row">
+          <label>间隔 <span class="val" id="gap-size-val">1px</span></label>
+          <input type="range" id="gap-size" min="0.5" max="3" value="1" step="0.5" />
+        </div>
+        <div class="style-row">
+          <label>豆心 <span class="val" id="hole-size-val">20%</span></label>
+          <input type="range" id="hole-size" min="0" max="50" value="20" step="1" />
+        </div>
+      </div>
+
+      <div class="export-group">
+        <button id="export-png-btn">导出 PNG</button>
+        <button id="export-svg-btn">导出 SVG</button>
+      </div>
+
+      <!-- Version label -->
+      <div class="version-label">v0.1.0</div>
+    </div>
+    
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

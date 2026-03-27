@@ -1,0 +1,21 @@
+{
+  "name": "temp-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.1"
+  },
+  "dependencies": {
+    "image-q": "^4.0.0",
+    "p5": "^2.2.3",
+    "p5.js-svg": "^1.6.0",
+    "vite-plugin-pwa": "^1.2.0",
+    "workbox-window": "^7.4.0"
+  }
+}

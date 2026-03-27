@@ -1,7 +1,6 @@
 import p5 from 'p5';
 import { utils, buildPaletteSync, applyPaletteSync } from 'image-q';
 import { updatePaletteUI } from './main.js';
-import defaultImageURL from './src/assets/hello.PNG';
 
 // Global state
 export const AppState = {
@@ -38,9 +37,6 @@ export function setupP5() {
       
       AppState.exportSVG = exportManualSVG;
       
-      // Auto-load default image
-      AppState.loadImage(defaultImageURL);
-
       canvas.mousePressed((e) => {
         // Prevent pan if clicking outside canvas or on UI
         if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
@@ -176,7 +172,7 @@ export function setupP5() {
         p.textSize(24);
         p.noStroke();
         p.fill(120);
-        p.text("加载中...", p.width / 2, p.height / 2);
+        p.text("上传一张图片开始创作", p.width / 2, p.height / 2);
         return;
       }
 

@@ -21,6 +21,12 @@ export const AppState = {
 };
 
 export function setupP5() {
+  // Fix for Vite HMR (Hot Module Replacement) piling up duplicate canvases
+  const container = document.getElementById('canvas-container');
+  if (container) {
+    container.innerHTML = '';
+  }
+
   let processedData = null; // { width, height, pixels: Uint8Array, cols, rows }
   let offsetX = 0;
   let offsetY = 0;

@@ -118,6 +118,32 @@ function requestRedraw() {
 
 let pickrInstances = [];
 
+// Manually position a pcr-app element relative to an anchor element
+function positionPickrNearSwatch(swatch, appEl) {
+  const rect = swatch.getBoundingClientRect();
+  const appW = appEl.offsetWidth || 250;
+  const appH = appEl.offsetHeight || 300;
+  const gap = 10;
+
+  // Prefer left of the swatch (towards the canvas)
+  let left = rect.left - appW - gap;
+  let top = rect.top;
+
+  // Fallback: right if no space on left
+  if (left < 8) {
+    left = rect.right + gap;
+  }
+
+  // Clamp vertically
+  if (top + appH > window.innerHeight - 8) {
+    top = window.innerHeight - appH - 8;
+  }
+  if (top < 8) top = 8;
+
+  appEl.style.left = left + 'px';
+  appEl.style.top = top + 'px';
+}
+
 export function updatePaletteUI(colors) {
   const container = document.getElementById('palette-container');
   container.innerHTML = '';
@@ -125,31 +151,30 @@ export function updatePaletteUI(colors) {
     container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem;">尚未提取</span>';
   }
   
-  pickrInstances.forEach(p => p.destroyAndRemove());
+  // Destroy all existing instances and clean up anchors
+  pickrInstances.forEach(({ pickr, anchor }) => {
+    pickr.destroyAndRemove();
+    if (anchor && anchor.parentNode) anchor.parentNode.removeChild(anchor);
+  });
   pickrInstances = [];
 
   colors.forEach((col, index) => {
     const swatch = document.createElement('div');
     swatch.className = 'color-swatch';
-    swatch.style.position = 'relative';
-    swatch.style.overflow = 'hidden';
     swatch.style.backgroundColor = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`;
-    
-    const pickrEl = document.createElement('div');
-    pickrEl.style.width = '100%';
-    pickrEl.style.height = '100%';
-    pickrEl.style.position = 'absolute';
-    pickrEl.style.top = '0';
-    pickrEl.style.left = '0';
-    swatch.appendChild(pickrEl);
     container.appendChild(swatch);
 
+    // Use a 1px invisible anchor in body — this gives nanopop a real DOM reference
+    // but we override its calculated position ourselves on show
+    const anchor = document.createElement('div');
+    anchor.style.cssText = 'position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;pointer-events:none;opacity:0;';
+    document.body.appendChild(anchor);
+
     const pickr = Pickr.create({
-      el: pickrEl,
+      el: anchor,
       theme: 'monolith',
       default: `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`,
       defaultRepresentation: 'HEXA',
-      position: 'left-start',
       swatches: null,
       components: {
         preview: true,
@@ -168,6 +193,16 @@ export function updatePaletteUI(colors) {
       }
     });
 
+    // Click the swatch → show pickr and manually position it
+    swatch.addEventListener('click', () => {
+      pickr.show();
+      const appEl = pickr.getRoot().app;
+      // First frame: browser has rendered, offsetWidth/Height are valid
+      requestAnimationFrame(() => {
+        positionPickrNearSwatch(swatch, appEl);
+      });
+    });
+
     pickr.on('save', (color, instance) => {
       const rgba = color.toRGBA();
       if (AppState.updateCustomColor) {
@@ -176,6 +211,6 @@ export function updatePaletteUI(colors) {
       instance.hide();
     });
 
-    pickrInstances.push(pickr);
+    pickrInstances.push({ pickr, anchor });
   });
 }

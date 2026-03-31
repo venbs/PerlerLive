@@ -370,3 +370,30 @@ input:checked + .slider:before {
   box-shadow: 0 0 0 1px var(--accent) !important;
   outline: none !important;
 }
+
+/* Toast notification */
+#toast {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-family: var(--font-family);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

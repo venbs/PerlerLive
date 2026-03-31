@@ -31,6 +31,21 @@
         <input type="range" id="resolution" min="16" max="256" value="64" step="8" />
       </div>
 
+      <div class="control-group inline">
+        <label>描边滤镜</label>
+        <label class="switch">
+          <input type="checkbox" id="cartoon-filter" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div id="cartoon-options" style="display: none; margin-bottom: 12px; padding: 0 12px;">
+        <div class="style-row">
+          <label>描边粗细 <span class="val" id="cartoon-stroke-val">0.005</span></label>
+          <input type="range" id="cartoon-stroke" min="0.001" max="0.05" value="0.005" step="0.001" />
+        </div>
+      </div>
+
       <div class="control-group">
         <label>颜色数量</label>
         <div class="radio-group" id="color-count-group">
@@ -60,6 +75,10 @@
           <input type="range" id="border-radius" min="0" max="100" value="50" />
         </div>
         <div class="style-row">
+          <label>厚度 <span class="val" id="bevel-size-val">10%</span></label>
+          <input type="range" id="bevel-size" min="0" max="20" value="10" step="1" />
+        </div>
+        <div class="style-row">
           <label>间隔 <span class="val" id="gap-size-val">1px</span></label>
           <input type="range" id="gap-size" min="0.5" max="3" value="1" step="0.5" />
         </div>
@@ -71,13 +90,14 @@
 
       <div class="export-group">
         <button id="export-png-btn">导出 PNG</button>
-        <button id="export-svg-btn">导出 SVG</button>
+        <button id="export-svg-btn">复制 SVG</button>
       </div>
 
       <!-- Version label -->
-      <div class="version-label">v0.1.0</div>
+      <div class="version-label">v0.2.0</div>
     </div>
     
     <script type="module" src="/main.js"></script>
+    <div id="toast"></div>
   </body>
 </html>

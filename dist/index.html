@@ -2,13 +2,13 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/PerlerStudio/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>PerlerStudio</title>
     <meta name="theme-color" content="#ffffff">
-    <script type="module" crossorigin src="/assets/index-DKnavwIo.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CZ1-unR_.css">
-  <link rel="manifest" href="/manifest.webmanifest"></head>
+    <script type="module" crossorigin src="/PerlerStudio/assets/index-C_vJKr3I.js"></script>
+    <link rel="stylesheet" crossorigin href="/PerlerStudio/assets/index-lUPo3B5U.css">
+  <link rel="manifest" href="/PerlerStudio/manifest.webmanifest"></head>
   <body>
     <!-- P5.js Canvas Container -->
     <div id="canvas-container"></div>
@@ -17,7 +17,7 @@
     <div id="ui-panel">
       <!-- Logo -->
       <div class="logo">
-        <img src="/assets/PerlerStudio-1EkPRKPy.svg" alt="PerlerStudio Logo" />
+        <img src="/PerlerStudio/assets/PerlerStudio-1EkPRKPy.svg" alt="PerlerStudio Logo" />
       </div>
 
       <!-- Controls -->
@@ -33,6 +33,14 @@
         <input type="range" id="resolution" min="16" max="256" value="64" step="8" />
       </div>
 
+      <div class="control-group inline">
+        <label>描边滤镜</label>
+        <label class="switch">
+          <input type="checkbox" id="cartoon-filter" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
       <div class="control-group">
         <label>颜色数量</label>
         <div class="radio-group" id="color-count-group">
@@ -40,6 +48,7 @@
           <label><input type="radio" name="colors" value="8">8</label>
           <label><input type="radio" name="colors" value="16" checked>16</label>
           <label><input type="radio" name="colors" value="32">32</label>
+          <label><input type="radio" name="colors" value="custom">自定义</label>
         </div>
         <div id="palette-container" class="palette-container">
           <!-- Swatches dynamically generated here -->
@@ -59,6 +68,10 @@
         <div class="style-row">
           <label>圆角 <span class="val" id="border-radius-val">50%</span></label>
           <input type="range" id="border-radius" min="0" max="100" value="50" />
+        </div>
+        <div class="style-row">
+          <label>厚度 <span class="val" id="bevel-size-val">10%</span></label>
+          <input type="range" id="bevel-size" min="0" max="20" value="10" step="1" />
         </div>
         <div class="style-row">
           <label>间隔 <span class="val" id="gap-size-val">1px</span></label>

@@ -27,10 +27,16 @@ function setupUI() {
   const resVal = document.getElementById('resolution-val');
   const colorRadios = document.getElementsByName('colors');
   const ditherCb = document.getElementById('dithering');
+  const cartoonCb = document.getElementById('cartoon-filter');
+  const cartoonOptions = document.getElementById('cartoon-options');
+  const cartoonStroke = document.getElementById('cartoon-stroke');
+  const cartoonStrokeVal = document.getElementById('cartoon-stroke-val');
   
   const borderInput = document.getElementById('border-radius');
   const borderVal = document.getElementById('border-radius-val');
   
+  const bevelInput = document.getElementById('bevel-size');
+  const bevelVal   = document.getElementById('bevel-size-val');
   const gapInput = document.getElementById('gap-size'); 
   const gapVal = document.getElementById('gap-size-val');
   
@@ -74,9 +80,27 @@ function setupUI() {
     requestUpdate();
   });
 
+  cartoonCb.addEventListener('change', (e) => {
+    AppState.cartoonFilter = e.target.checked;
+    cartoonOptions.style.display = e.target.checked ? 'block' : 'none';
+    requestUpdate();
+  });
+
   borderInput.addEventListener('input', (e) => {
     AppState.perlerRadius = parseInt(e.target.value);
     borderVal.textContent = AppState.perlerRadius + '%';
+    requestRedraw();
+  });
+
+  cartoonStroke.addEventListener('input', (e) => {
+    AppState.cartoonStroke = parseFloat(e.target.value);
+    cartoonStrokeVal.textContent = AppState.cartoonStroke;
+    requestUpdate();
+  });
+
+  bevelInput.addEventListener('input', (e) => {
+    AppState.bevelSize = parseInt(e.target.value);
+    bevelVal.textContent = AppState.bevelSize + '%';
     requestRedraw();
   });
 
@@ -97,8 +121,35 @@ function setupUI() {
   });
   
   svgBtn.addEventListener('click', () => {
-    if(AppState.exportSVG) AppState.exportSVG();
+    if(AppState.exportSVG) AppState.exportSVG(showToast);
   });
+
+  // Clipboard paste: support pasting image directly into canvas
+  window.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          const url = URL.createObjectURL(file);
+          AppState.loadImage(url);
+          showToast('图片已从剪贴板导入');
+        }
+        break;
+      }
+    }
+  });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2000);
 }
 
 function requestUpdate() {

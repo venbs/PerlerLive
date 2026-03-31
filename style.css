@@ -46,7 +46,6 @@ body {
   left: 0;
   width: 100% !important;
   height: 100% !important;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.04);
 }
 
 #ui-panel {
@@ -59,6 +58,7 @@ body {
   background: var(--panel-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  isolation: isolate;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 20px;

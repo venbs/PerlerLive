@@ -8,6 +8,8 @@ export const AppState = {
   originalImage: null,
   resolution: 64,
   colorCount: 16,
+  isCustomColors: false,
+  customColors: null,
   dithering: false,
   perlerRadius: 50,
   perlerGap: 1, // Absolute gap size 0.5-3px
@@ -111,6 +113,41 @@ export function setupP5() {
       }
     };
 
+    AppState.updateCustomColor = (index, newColorArray) => {
+      if (!AppState.customColors) return;
+
+      if (!newColorArray || newColorArray.length !== 4) return;
+      
+      const newColor = [
+        Math.round(newColorArray[0]),
+        Math.round(newColorArray[1]),
+        Math.round(newColorArray[2]),
+        Math.round(newColorArray[3])
+      ];
+
+      AppState.isCustomColors = true;
+      const customRadio = document.querySelector('input[name="colors"][value="custom"]');
+      if (customRadio) {
+        customRadio.checked = true;
+      }
+
+      const colors = [...AppState.customColors];
+      colors[index] = newColor;
+
+      const uniqueColors = [];
+      const seen = new Set();
+      for (const c of colors) {
+        const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueColors.push(c);
+        }
+      }
+
+      AppState.customColors = uniqueColors;
+      processImage();
+    };
+
     AppState.triggerRedraw = () => {
       p.redraw();
     };
@@ -136,6 +173,7 @@ export function setupP5() {
       h = Math.max(1, Math.round(h));
 
       const pg = p.createGraphics(w, h);
+      pg.noSmooth(); // 禁用抗锯齿，使用临近像素插值
       pg.pixelDensity(1);
       pg.image(img, 0, 0, w, h);
       pg.loadPixels();
@@ -144,13 +182,23 @@ export function setupP5() {
 
       const inPointContainer = utils.PointContainer.fromUint8Array(pg.pixels, w, h);
 
-      const palette = buildPaletteSync([inPointContainer], {
-        colors: AppState.colorCount,
-        colorDistanceFormula: 'euclidean'
-      });
+      let palette;
+      if (AppState.isCustomColors && AppState.customColors && AppState.customColors.length > 0) {
+        palette = new utils.Palette();
+        AppState.customColors.forEach(c => {
+          palette.add(utils.Point.createByRGBA(c[0], c[1], c[2], c[3] !== undefined ? c[3] : 255));
+        });
+      } else {
+        palette = buildPaletteSync([inPointContainer], {
+          colors: AppState.colorCount,
+          colorDistanceFormula: 'euclidean'
+        });
+      }
       
       const pointArray = palette.getPointContainer().getPointArray();
-      const colors = pointArray.map(pt => [pt.r, pt.g, pt.b, pt.a]);
+      const colors = pointArray.map(pt => [pt.r, pt.g, pt.b, pt.a !== undefined ? pt.a : 255]);
+      
+      AppState.customColors = colors;
       updatePaletteUI(colors);
 
       const outPointContainer = applyPaletteSync(inPointContainer, palette, {

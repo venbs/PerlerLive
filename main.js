@@ -1,6 +1,8 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { setupP5, AppState } from './p5setup.js';
+import Pickr from '@simonwep/pickr';
+import '@simonwep/pickr/dist/themes/monolith.min.css';
 
 // Setup PWA
 const updateSW = registerSW({
@@ -56,7 +58,12 @@ function setupUI() {
   colorRadios.forEach(radio => {
     radio.addEventListener('change', (e) => {
       if (e.target.checked) {
-        AppState.colorCount = parseInt(e.target.value);
+        if (e.target.value === 'custom') {
+          AppState.isCustomColors = true;
+        } else {
+          AppState.isCustomColors = false;
+          AppState.colorCount = parseInt(e.target.value);
+        }
         requestUpdate();
       }
     });
@@ -109,16 +116,66 @@ function requestRedraw() {
   }
 }
 
+let pickrInstances = [];
+
 export function updatePaletteUI(colors) {
   const container = document.getElementById('palette-container');
   container.innerHTML = '';
   if (colors.length === 0) {
     container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem;">尚未提取</span>';
   }
-  colors.forEach(col => {
+  
+  pickrInstances.forEach(p => p.destroyAndRemove());
+  pickrInstances = [];
+
+  colors.forEach((col, index) => {
     const swatch = document.createElement('div');
     swatch.className = 'color-swatch';
+    swatch.style.position = 'relative';
+    swatch.style.overflow = 'hidden';
     swatch.style.backgroundColor = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`;
+    
+    const pickrEl = document.createElement('div');
+    pickrEl.style.width = '100%';
+    pickrEl.style.height = '100%';
+    pickrEl.style.position = 'absolute';
+    pickrEl.style.top = '0';
+    pickrEl.style.left = '0';
+    swatch.appendChild(pickrEl);
     container.appendChild(swatch);
+
+    const pickr = Pickr.create({
+      el: pickrEl,
+      theme: 'monolith',
+      default: `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`,
+      defaultRepresentation: 'HEXA',
+      position: 'left-start',
+      swatches: null,
+      components: {
+        preview: true,
+        opacity: true,
+        hue: true,
+        interaction: {
+          hex: true,
+          rgba: true,
+          hsla: false,
+          hsva: false,
+          cmyk: false,
+          input: true,
+          clear: false,
+          save: true
+        }
+      }
+    });
+
+    pickr.on('save', (color, instance) => {
+      const rgba = color.toRGBA();
+      if (AppState.updateCustomColor) {
+        AppState.updateCustomColor(index, [rgba[0], rgba[1], rgba[2], rgba[3] * 255]);
+      }
+      instance.hide();
+    });
+
+    pickrInstances.push(pickr);
   });
 }

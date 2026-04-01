@@ -321,9 +321,9 @@ export function setupP5() {
             if (strokeW > 0) {
               ctx.save();
               const beadGrad = ctx.createLinearGradient(bx, by, bx + beadSize, by + beadSize);
-              beadGrad.addColorStop(0, 'rgb(' + lighten(r, 1.3) + ',' + lighten(g, 1.3) + ',' + lighten(b, 1.3) + ')');
+              beadGrad.addColorStop(0, 'rgb(' + lighten(r, 1.45) + ',' + lighten(g, 1.45) + ',' + lighten(b, 1.45) + ')');
               beadGrad.addColorStop(0.45, 'rgb(' + r + ',' + g + ',' + b + ')');
-              beadGrad.addColorStop(1, 'rgb(' + darken(r, 0.8) + ',' + darken(g, 0.8) + ',' + darken(b, 0.8) + ')');
+              beadGrad.addColorStop(1, 'rgb(' + darken(r, 0.7) + ',' + darken(g, 0.7) + ',' + darken(b, 0.7) + ')');
               ctx.strokeStyle = beadGrad;
               ctx.lineWidth = strokeW;
               ctx.lineJoin = 'round';
@@ -351,9 +351,9 @@ export function setupP5() {
               // Reversed gradient: dark TL (stronger) → light BR (stronger)
               if (hsw > 0) {
                 const holeGrad = ctx.createLinearGradient(hcx - hr, hcy - hr, hcx + hr, hcy + hr);
-                holeGrad.addColorStop(0, 'rgb(' + darken(r, 0.8) + ',' + darken(g, 0.8) + ',' + darken(b, 0.8) + ')');
+                holeGrad.addColorStop(0, 'rgb(' + darken(r, 0.7) + ',' + darken(g, 0.7) + ',' + darken(b, 0.7) + ')');
                 holeGrad.addColorStop(0.45, 'rgb(' + r + ',' + g + ',' + b + ')');
-                holeGrad.addColorStop(1, 'rgb(' + lighten(r, 1.3) + ',' + lighten(g, 1.3) + ',' + lighten(b, 1.3) + ')');
+                holeGrad.addColorStop(1, 'rgb(' + lighten(r, 1.45) + ',' + lighten(g, 1.45) + ',' + lighten(b, 1.45) + ')');
                 ctx.strokeStyle = holeGrad;
                 ctx.lineWidth = hsw;
                 ctx.beginPath();
@@ -398,14 +398,14 @@ export function setupP5() {
         const key = r + ',' + g + ',' + b;
         colorToId[key] = i;
         defLines.push('    <linearGradient id="bv' + i + '" x1="0%" y1="0%" x2="100%" y2="100%">');
-        defLines.push('      <stop offset="0%"   stop-color="rgb(' + lightenSVG(r, 1.3) + ',' + lightenSVG(g, 1.3) + ',' + lightenSVG(b, 1.3) + ')"/>');
+        defLines.push('      <stop offset="0%"   stop-color="rgb(' + lightenSVG(r, 1.45) + ',' + lightenSVG(g, 1.45) + ',' + lightenSVG(b, 1.45) + ')"/>');
         defLines.push('      <stop offset="45%"  stop-color="rgb(' + r + ',' + g + ',' + b + ')"/>');
-        defLines.push('      <stop offset="100%" stop-color="rgb(' + darkenSVG(r, 0.8) + ',' + darkenSVG(g, 0.8) + ',' + darkenSVG(b, 0.8) + ')"/>');
+        defLines.push('      <stop offset="100%" stop-color="rgb(' + darkenSVG(r, 0.7) + ',' + darkenSVG(g, 0.7) + ',' + darkenSVG(b, 0.7) + ')"/>');
         defLines.push('    </linearGradient>');
         defLines.push('    <linearGradient id="bvh' + i + '" x1="0%" y1="0%" x2="100%" y2="100%">');
-        defLines.push('      <stop offset="0%"   stop-color="rgb(' + darkenSVG(r, 0.8) + ',' + darkenSVG(g, 0.8) + ',' + darkenSVG(b, 0.8) + ')"/>');
+        defLines.push('      <stop offset="0%"   stop-color="rgb(' + darkenSVG(r, 0.7) + ',' + darkenSVG(g, 0.7) + ',' + darkenSVG(b, 0.7) + ')"/>');
         defLines.push('      <stop offset="45%"  stop-color="rgb(' + r + ',' + g + ',' + b + ')"/>');
-        defLines.push('      <stop offset="100%" stop-color="rgb(' + lightenSVG(r, 1.3) + ',' + lightenSVG(g, 1.3) + ',' + lightenSVG(b, 1.3) + ')"/>');
+        defLines.push('      <stop offset="100%" stop-color="rgb(' + lightenSVG(r, 1.45) + ',' + lightenSVG(g, 1.45) + ',' + lightenSVG(b, 1.45) + ')"/>');
         defLines.push('    </linearGradient>');
       });
 

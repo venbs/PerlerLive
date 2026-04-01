@@ -339,7 +339,7 @@ export function setupP5() {
               const hcx = x * cellSize + cellSize / 2;
               const hcy = y * cellSize + cellSize / 2;
               const hr = holePx / 2;
-              const hsw = AppState.bevelSize > 0 ? Math.max(0.6, holePx * (AppState.bevelSize / 100) * 3) : 0;
+              const hsw = AppState.bevelSize > 0 ? Math.max(0.4, holePx * (AppState.bevelSize / 100) * 1.5) : 0;
 
               ctx.save();
               // Hole fill: darkened base colour
@@ -439,7 +439,7 @@ export function setupP5() {
               const hcx = x * cellSize + cellSize / 2;
               const hcy = y * cellSize + cellSize / 2;
               const hr = holePx / 2;
-              const hsw = AppState.bevelSize > 0 ? Math.max(0.5, holePx * (AppState.bevelSize / 100) * 3) : 0;
+              const hsw = AppState.bevelSize > 0 ? Math.max(0.4, holePx * (AppState.bevelSize / 100) * 1.5) : 0;
               const holeFill = 'rgb(' + darkenSVG(r, 0.7) + ',' + darkenSVG(g, 0.7) + ',' + darkenSVG(b, 0.7) + ')';
               // Inner stroke on circle: reduce radius by half stroke width
               const hir = hr;

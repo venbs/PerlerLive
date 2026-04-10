@@ -38,6 +38,7 @@ body {
   background-color: #fcfcfc;
   background-image: radial-gradient(#d5d5d5 1px, transparent 1px);
   background-size: 24px 24px;
+  touch-action: none;
 }
 
 #canvas-container canvas {
@@ -46,6 +47,7 @@ body {
   left: 0;
   width: 100% !important;
   height: 100% !important;
+  touch-action: none;
 }
 
 #ui-panel {
@@ -62,7 +64,7 @@ body {
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -73,8 +75,9 @@ body {
 #ui-panel::-webkit-scrollbar {
   width: 4px;
 }
+
 #ui-panel::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 2px;
 }
 
@@ -161,7 +164,7 @@ label {
 /* Radios */
 .radio-group {
   display: flex;
-  background: rgba(0,0,0,0.04);
+  background: rgba(0, 0, 0, 0.04);
   border-radius: 6px;
   padding: 2px;
 }
@@ -182,7 +185,7 @@ label {
 .radio-group label:has(input:checked) {
   background: #ffffff;
   color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .radio-group input {
@@ -195,7 +198,7 @@ input[type="range"] {
   appearance: none;
   width: 100%;
   height: 4px;
-  background: rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.08);
   border-radius: 2px;
   outline: none;
   margin-top: 4px;
@@ -208,10 +211,10 @@ input[type="range"]::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
   background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.2);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.1s;
 }
 
@@ -239,11 +242,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   width: 32px;
   height: 18px;
 }
+
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
+
 .slider {
   position: absolute;
   cursor: pointer;
@@ -251,10 +256,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0,0,0,0.12);
+  background-color: rgba(0, 0, 0, 0.12);
   transition: .2s;
   border-radius: 18px;
 }
+
 .slider:before {
   position: absolute;
   content: "";
@@ -265,12 +271,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background-color: white;
   transition: .2s;
   border-radius: 50%;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
-input:checked + .slider {
+
+input:checked+.slider {
   background-color: var(--accent);
 }
-input:checked + .slider:before {
+
+input:checked+.slider:before {
   transform: translateX(14px);
 }
 
@@ -294,16 +302,17 @@ input:checked + .slider:before {
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .export-group button:nth-child(2) {
-  background: var(--bg-color); /* slightly different */
+  background: var(--bg-color);
+  /* slightly different */
 }
 
 .export-group button:hover {
   background: #fafafa;
-  border-color: rgba(0,0,0,0.15);
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .export-group button:active {
@@ -321,8 +330,8 @@ input:checked + .slider:before {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transition: transform 0.1s, box-shadow 0.1s;
 }
@@ -330,7 +339,7 @@ input:checked + .slider:before {
 .color-swatch:hover {
   transform: scale(1.15) translateY(-1px);
   z-index: 2;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .version-label {
@@ -350,7 +359,7 @@ input:checked + .slider:before {
   -webkit-backdrop-filter: blur(24px) !important;
   border: 1px solid var(--panel-border) !important;
   border-radius: var(--radius) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.02) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.02) !important;
   width: 250px !important;
   padding: 18px !important;
 }
@@ -374,7 +383,7 @@ input:checked + .slider:before {
 
 .pcr-app[data-theme="monolith"] .pcr-interaction input {
   border-radius: 4px !important;
-  border: 1px solid rgba(0,0,0,0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
   font-family: inherit !important;
   color: var(--text-primary) !important;
   background: rgba(255, 255, 255, 0.8) !important;
@@ -461,7 +470,9 @@ input:checked + .slider:before {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---- Mobile breakpoint ---- */

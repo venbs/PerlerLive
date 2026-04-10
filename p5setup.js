@@ -65,18 +65,69 @@ export function setupP5() {
 
       canvas.mouseWheel((e) => {
         if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
-
-        // 增益系数，结合指数级缩放带来更顺滑顺手的滚轮体验
         const zoomSpeed = 0.15;
         const direction = e.deltaY > 0 ? -1 : 1;
-
         AppState.zoomScale *= (1 + direction * zoomSpeed);
-        // 限制放大缩小的终极范围
         AppState.zoomScale = Math.max(0.05, Math.min(30, AppState.zoomScale));
-
         p.redraw();
-        return false; // prevent page scroll
+        return false;
       });
+
+      // --- Native Touch gesture support (mobile) to guarantee preventDefault & passive: false ---
+      const cvs = canvas.elt;
+      let initialPinchDist = 0;
+      let initialZoomScale = 1;
+      let isTouchPanning = false;
+      let touchPanStartX = 0;
+      let touchPanStartY = 0;
+
+      cvs.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialZoomScale = AppState.zoomScale;
+          isTouchPanning = false;
+        } else if (e.touches.length === 1) {
+          isTouchPanning = true;
+          touchPanStartX = e.touches[0].clientX - offsetX;
+          touchPanStartY = e.touches[0].clientY - offsetY;
+        }
+        e.preventDefault();
+      }, { passive: false });
+
+      cvs.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDist > 0) {
+          const currentDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const scale = currentDist / initialPinchDist;
+          AppState.zoomScale = Math.max(0.05, Math.min(30, initialZoomScale * scale));
+          isTouchPanning = false;
+          p.redraw();
+        } else if (e.touches.length === 1 && isTouchPanning) {
+          offsetX = e.touches[0].clientX - touchPanStartX;
+          offsetY = e.touches[0].clientY - touchPanStartY;
+          p.redraw();
+        }
+        e.preventDefault();
+      }, { passive: false });
+
+      cvs.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          initialPinchDist = 0;
+        }
+        if (e.touches.length === 0) {
+          isTouchPanning = false;
+        } else if (e.touches.length === 1) {
+          // Re-init single finger pan on the remaining finger
+          isTouchPanning = true;
+          touchPanStartX = e.touches[0].clientX - offsetX;
+          touchPanStartY = e.touches[0].clientY - offsetY;
+        }
+      }, { passive: false });
     };
 
     p.windowResized = () => {
@@ -108,53 +159,8 @@ export function setupP5() {
       isMouseDragging = false;
     };
 
-    // --- Touch gesture support (mobile) ---
-    let touchStartDist = 0;
-    let touchStartScale = 1;
-    let isTouchPanning = false;
-    let touchPanStartX = 0;
-    let touchPanStartY = 0;
-
-    p.touchStarted = (e) => {
-      if (!e.target || !e.target.classList || !e.target.classList.contains('p5Canvas')) return;
-
-      if (p.touches.length === 2) {
-        // Pinch start
-        const t = p.touches;
-        touchStartDist = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
-        touchStartScale = AppState.zoomScale;
-        isTouchPanning = false;
-      } else if (p.touches.length === 1) {
-        // Single finger pan start
-        isTouchPanning = true;
-        touchPanStartX = p.touches[0].x - offsetX;
-        touchPanStartY = p.touches[0].y - offsetY;
-      }
-      return false; // prevent default
-    };
-
-    p.touchMoved = (e) => {
-      if (p.touches.length === 2 && touchStartDist > 0) {
-        // Pinch zoom
-        const t = p.touches;
-        const currentDist = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
-        const scale = currentDist / touchStartDist;
-        AppState.zoomScale = Math.max(0.05, Math.min(30, touchStartScale * scale));
-        isTouchPanning = false;
-        p.redraw();
-      } else if (p.touches.length === 1 && isTouchPanning) {
-        // Single finger pan
-        offsetX = p.touches[0].x - touchPanStartX;
-        offsetY = p.touches[0].y - touchPanStartY;
-        p.redraw();
-      }
-      return false; // prevent default
-    };
-
-    p.touchEnded = () => {
-      touchStartDist = 0;
-      isTouchPanning = false;
-    };
+    // --- Native Touch gesture support (mobile) ---
+    // Moved to native event listeners inside setup() to ensure { passive: false }
 
     AppState.loadImage = (url) => {
       p.loadImage(url, (img) => {
@@ -379,8 +385,19 @@ export function setupP5() {
       const darken = (v, f) => Math.max(0, Math.round(v * f));
       const strokeW = AppState.bevelSize > 0 ? Math.max(0.8, beadSize * (AppState.bevelSize / 100)) : 0;
 
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
+      // Visibility culling bounds
+      const minVisibleX = Math.floor(-startX / cellSize) - 1;
+      const maxVisibleX = Math.ceil((p.width - startX) / cellSize) + 1;
+      const minVisibleY = Math.floor(-startY / cellSize) - 1;
+      const maxVisibleY = Math.ceil((p.height - startY) / cellSize) + 1;
+      
+      const startRow = Math.max(0, minVisibleY);
+      const endRow = Math.min(rows, maxVisibleY);
+      const startCol = Math.max(0, minVisibleX);
+      const endCol = Math.min(cols, maxVisibleX);
+
+      for (let y = startRow; y < endRow; y++) {
+        for (let x = startCol; x < endCol; x++) {
           const idx = (y * cols + x) * 4;
           const a = pixels[idx + 3];
 

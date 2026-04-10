@@ -16,11 +16,19 @@ const updateSW = registerSW({
   },
 });
 
+const isMobile = () => window.innerWidth <= 768;
+
 window.addEventListener('load', () => {
   setupP5();
   setupUI();
+  if (isMobile()) {
+    setupMobile();
+  }
 });
 
+// =============================================
+// Desktop UI Setup (also used by mobile)
+// =============================================
 function setupUI() {
   const uploadInput = document.getElementById('image-upload');
   const resInput = document.getElementById('resolution');
@@ -50,11 +58,15 @@ function setupUI() {
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      if (isMobile()) showLoading();
       AppState.loadImage(url);
     }
   });
 
-  resInput.addEventListener('input', (e) => {
+  // On mobile, use 'change' (fire on release) instead of 'input' (fire on drag)
+  const sliderEvent = isMobile() ? 'change' : 'input';
+
+  resInput.addEventListener(sliderEvent, (e) => {
     const val = parseInt(e.target.value);
     resVal.textContent = val + 'px';
     AppState.resolution = val;
@@ -86,31 +98,31 @@ function setupUI() {
     requestUpdate();
   });
 
-  borderInput.addEventListener('input', (e) => {
+  borderInput.addEventListener(sliderEvent, (e) => {
     AppState.perlerRadius = parseInt(e.target.value);
     borderVal.textContent = AppState.perlerRadius + '%';
     requestRedraw();
   });
 
-  cartoonStroke.addEventListener('input', (e) => {
+  cartoonStroke.addEventListener(sliderEvent, (e) => {
     AppState.cartoonStroke = parseFloat(e.target.value);
     cartoonStrokeVal.textContent = AppState.cartoonStroke;
     requestUpdate();
   });
 
-  bevelInput.addEventListener('input', (e) => {
+  bevelInput.addEventListener(sliderEvent, (e) => {
     AppState.bevelSize = parseInt(e.target.value);
     bevelVal.textContent = AppState.bevelSize + '%';
     requestRedraw();
   });
 
-  gapInput.addEventListener('input', (e) => {
+  gapInput.addEventListener(sliderEvent, (e) => {
     AppState.perlerGap = parseFloat(e.target.value);
     gapVal.textContent = AppState.perlerGap + 'px';
     requestRedraw();
   });
 
-  holeInput.addEventListener('input', (e) => {
+  holeInput.addEventListener(sliderEvent, (e) => {
     AppState.holeSize = parseInt(e.target.value);
     holeVal.textContent = AppState.holeSize + '%';
     requestRedraw();
@@ -142,6 +154,144 @@ function setupUI() {
   });
 }
 
+// =============================================
+// Mobile Setup: Tab Bar, Bottom Sheet, DOM move
+// =============================================
+function setupMobile() {
+  const uiPanel = document.getElementById('ui-panel');
+  const sheet = document.getElementById('mobile-sheet');
+  const sheetContent = sheet.querySelector('.sheet-content');
+  const tabBar = document.getElementById('mobile-tab-bar');
+  const tabBtns = tabBar.querySelectorAll('.tab-btn');
+
+  // --- Move controls from desktop panel into mobile sheet panels ---
+  const panels = {
+    import: sheet.querySelector('[data-panel="import"]'),
+    color: sheet.querySelector('[data-panel="color"]'),
+    style: sheet.querySelector('[data-panel="style"]'),
+    export: sheet.querySelector('[data-panel="export"]'),
+  };
+
+  // Import panel: upload + resolution + cartoon filter
+  moveChildren(uiPanel, panels.import, [
+    '[data-mobile-group="import-upload"]',
+    '[data-mobile-group="import-resolution"]',
+    '[data-mobile-group="import-cartoon"]',
+    '#cartoon-options',
+  ]);
+
+  // Color panel: color count + palette + dithering
+  moveChildren(uiPanel, panels.color, [
+    '[data-mobile-group="color-count"]',
+    '[data-mobile-group="color-dither"]',
+  ]);
+
+  // Style panel: perler style controls
+  moveChildren(uiPanel, panels.style, [
+    '[data-mobile-group="style-controls"]',
+  ]);
+
+  // Export panel: export buttons
+  moveChildren(uiPanel, panels.export, [
+    '[data-mobile-group="export-buttons"]',
+  ]);
+
+  // --- Tab switching ---
+  let activeTab = null;
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+
+      if (activeTab === tab) {
+        // Toggle off — close sheet
+        closeSheet();
+        return;
+      }
+
+      activeTab = tab;
+
+      // Update tab highlight
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Show the corresponding panel
+      Object.values(panels).forEach(p => p.classList.remove('active'));
+      panels[tab].classList.add('active');
+
+      // Open sheet
+      sheet.classList.add('open');
+    });
+  });
+
+  function closeSheet() {
+    sheet.classList.remove('open');
+    tabBtns.forEach(b => b.classList.remove('active'));
+    activeTab = null;
+  }
+
+  // --- Sheet drag-to-dismiss ---
+  const handle = sheet.querySelector('.sheet-handle');
+  let sheetTouchStartY = 0;
+  let sheetTranslateY = 0;
+
+  handle.addEventListener('touchstart', (e) => {
+    sheetTouchStartY = e.touches[0].clientY;
+    sheetTranslateY = 0;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  handle.addEventListener('touchmove', (e) => {
+    const dy = e.touches[0].clientY - sheetTouchStartY;
+    if (dy > 0) {
+      sheetTranslateY = dy;
+      sheet.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  handle.addEventListener('touchend', () => {
+    sheet.style.transition = '';
+    if (sheetTranslateY > 60) {
+      closeSheet();
+    }
+    sheet.style.transform = '';
+    sheetTranslateY = 0;
+  });
+
+  // Close sheet when tapping canvas
+  document.getElementById('canvas-container').addEventListener('click', (e) => {
+    if (activeTab && e.target.classList.contains('p5Canvas')) {
+      closeSheet();
+    }
+  });
+}
+
+// Helper: move elements matching selectors from source to dest
+function moveChildren(source, dest, selectors) {
+  selectors.forEach(sel => {
+    const el = source.querySelector(sel);
+    if (el) {
+      dest.appendChild(el);
+    }
+  });
+}
+
+// =============================================
+// Loading overlay
+// =============================================
+function showLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.add('show');
+}
+
+export function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.remove('show');
+}
+
+// =============================================
+// Shared utilities
+// =============================================
 function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -155,9 +305,11 @@ function showToast(msg) {
 function requestUpdate() {
   if (AppState.triggerUpdate) {
     clearTimeout(AppState.updateTimeout);
+    const delay = isMobile() ? 300 : 150;
     AppState.updateTimeout = setTimeout(() => {
+      if (isMobile()) showLoading();
       AppState.triggerUpdate();
-    }, 150);
+    }, delay);
   }
 }
 
@@ -171,6 +323,10 @@ let pickrInstances = [];
 
 // Manually position a pcr-app element relative to an anchor element
 function positionPickrNearSwatch(swatch, appEl) {
+  if (isMobile()) {
+    // On mobile, CSS handles centering via fixed position + transform
+    return;
+  }
   const rect = swatch.getBoundingClientRect();
   const appW = appEl.offsetWidth || 250;
   const appH = appEl.offsetHeight || 300;

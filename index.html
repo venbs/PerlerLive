@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>PerlerStudio</title>
     <meta name="theme-color" content="#ffffff">
   </head>
@@ -11,7 +11,13 @@
     <!-- P5.js Canvas Container -->
     <div id="canvas-container"></div>
 
-    <!-- Floating UI Panel -->
+    <!-- Loading overlay for mobile -->
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <span>处理中…</span>
+    </div>
+
+    <!-- Desktop Floating UI Panel -->
     <div id="ui-panel">
       <!-- Logo -->
       <div class="logo">
@@ -21,19 +27,19 @@
       </div>
 
       <!-- Controls -->
-      <div class="control-group">
+      <div class="control-group" data-mobile-group="import-upload">
         <label for="image-upload" class="upload-btn">
           导入图片
         </label>
         <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" style="display: none;" />
       </div>
 
-      <div class="control-group">
+      <div class="control-group" data-mobile-group="import-resolution">
         <label>分辨率 <span class="val" id="resolution-val">64px</span></label>
         <input type="range" id="resolution" min="16" max="256" value="64" step="8" />
       </div>
 
-      <div class="control-group inline">
+      <div class="control-group inline" data-mobile-group="import-cartoon">
         <label>描边滤镜</label>
         <label class="switch">
           <input type="checkbox" id="cartoon-filter" />
@@ -48,7 +54,7 @@
         </div>
       </div>
 
-      <div class="control-group">
+      <div class="control-group" data-mobile-group="color-count">
         <label>颜色数量</label>
         <div class="radio-group" id="color-count-group">
           <label><input type="radio" name="colors" value="4">4</label>
@@ -62,7 +68,7 @@
         </div>
       </div>
 
-      <div class="control-group inline">
+      <div class="control-group inline" data-mobile-group="color-dither">
         <label>平滑抖动</label>
         <label class="switch">
           <input type="checkbox" id="dithering" />
@@ -70,7 +76,7 @@
         </label>
       </div>
 
-      <div class="control-group">
+      <div class="control-group" data-mobile-group="style-controls">
         <label>拼豆样式</label>
         <div class="style-row">
           <label>圆角 <span class="val" id="border-radius-val">50%</span></label>
@@ -90,14 +96,46 @@
         </div>
       </div>
 
-      <div class="export-group">
+      <div class="export-group" data-mobile-group="export-buttons">
         <button id="export-png-btn">导出 PNG</button>
         <button id="export-svg-btn">复制 SVG</button>
       </div>
 
       <!-- Version label -->
-      <div class="version-label">v0.2.0</div>
+      <div class="version-label">v0.3.0</div>
     </div>
+
+    <!-- Mobile Bottom Sheet -->
+    <div id="mobile-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-content">
+        <!-- Panels are populated by JS moving desktop controls here -->
+        <div class="sheet-panel" data-panel="import"></div>
+        <div class="sheet-panel" data-panel="color"></div>
+        <div class="sheet-panel" data-panel="style"></div>
+        <div class="sheet-panel" data-panel="export"></div>
+      </div>
+    </div>
+
+    <!-- Mobile Tab Bar -->
+    <nav id="mobile-tab-bar">
+      <button class="tab-btn" data-tab="import">
+        <span class="tab-icon">📷</span>
+        <span class="tab-label">导入</span>
+      </button>
+      <button class="tab-btn" data-tab="color">
+        <span class="tab-icon">🎨</span>
+        <span class="tab-label">颜色</span>
+      </button>
+      <button class="tab-btn" data-tab="style">
+        <span class="tab-icon">✨</span>
+        <span class="tab-label">样式</span>
+      </button>
+      <button class="tab-btn" data-tab="export">
+        <span class="tab-icon">⬇️</span>
+        <span class="tab-label">导出</span>
+      </button>
+    </nav>
     
     <script type="module" src="/main.js"></script>
     <div id="toast"></div>

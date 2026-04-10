@@ -1,6 +1,6 @@
 import p5 from 'p5';
 import { utils, buildPaletteSync, applyPaletteSync } from 'image-q';
-import { updatePaletteUI } from './main.js';
+import { updatePaletteUI, hideLoading } from './main.js';
 import defaultImageURL from './src/assets/hello.PNG';
 import { fip } from './src/p5.fip.js';
 
@@ -26,6 +26,8 @@ export const AppState = {
   loadImage: null
 };
 
+const isMobile = () => window.innerWidth <= 768;
+
 export function setupP5() {
   // Fix for Vite HMR (Hot Module Replacement) piling up duplicate canvases
   const container = document.getElementById('canvas-container');
@@ -39,6 +41,10 @@ export function setupP5() {
 
   const sketch = (p) => {
     p.setup = () => {
+      // Reduce pixel density on mobile for better performance
+      if (isMobile()) {
+        p.pixelDensity(1);
+      }
       const canvas = p.createCanvas(window.innerWidth, window.innerHeight);
       canvas.parent('canvas-container');
       p.noLoop(); // We only redraw on changes
@@ -100,6 +106,54 @@ export function setupP5() {
 
     p.mouseReleased = () => {
       isMouseDragging = false;
+    };
+
+    // --- Touch gesture support (mobile) ---
+    let touchStartDist = 0;
+    let touchStartScale = 1;
+    let isTouchPanning = false;
+    let touchPanStartX = 0;
+    let touchPanStartY = 0;
+
+    p.touchStarted = (e) => {
+      if (!e.target || !e.target.classList || !e.target.classList.contains('p5Canvas')) return;
+
+      if (p.touches.length === 2) {
+        // Pinch start
+        const t = p.touches;
+        touchStartDist = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
+        touchStartScale = AppState.zoomScale;
+        isTouchPanning = false;
+      } else if (p.touches.length === 1) {
+        // Single finger pan start
+        isTouchPanning = true;
+        touchPanStartX = p.touches[0].x - offsetX;
+        touchPanStartY = p.touches[0].y - offsetY;
+      }
+      return false; // prevent default
+    };
+
+    p.touchMoved = (e) => {
+      if (p.touches.length === 2 && touchStartDist > 0) {
+        // Pinch zoom
+        const t = p.touches;
+        const currentDist = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
+        const scale = currentDist / touchStartDist;
+        AppState.zoomScale = Math.max(0.05, Math.min(30, touchStartScale * scale));
+        isTouchPanning = false;
+        p.redraw();
+      } else if (p.touches.length === 1 && isTouchPanning) {
+        // Single finger pan
+        offsetX = p.touches[0].x - touchPanStartX;
+        offsetY = p.touches[0].y - touchPanStartY;
+        p.redraw();
+      }
+      return false; // prevent default
+    };
+
+    p.touchEnded = () => {
+      touchStartDist = 0;
+      isTouchPanning = false;
     };
 
     AppState.loadImage = (url) => {
@@ -257,6 +311,7 @@ export function setupP5() {
 
       pg.remove();
       p.redraw();
+      hideLoading();
     }
 
     p.draw = () => {

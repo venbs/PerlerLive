@@ -263,6 +263,7 @@ export function setupP5() {
       p.clear();
 
       if (!processedData) {
+        p.background(255);
         p.textAlign(p.CENTER, p.CENTER);
         p.textSize(24);
         p.noStroke();
@@ -270,6 +271,8 @@ export function setupP5() {
         p.text("加载中...", p.width / 2, p.height / 2);
         return;
       }
+
+      p.background(255); // Solid white background
 
       const { cols, rows, pixels } = processedData;
 
@@ -287,6 +290,24 @@ export function setupP5() {
       // Start centered + pan offsets
       const startX = (p.width - totalW) / 2 + offsetX;
       const startY = (p.height - totalH) / 2 + offsetY;
+
+      // Draw infinite grid aligning with cells
+      if (cellSize > 4) {
+        p.push();
+        p.stroke('#f9f9f9ff');
+        p.strokeWeight(1);
+        const gStartX = startX % cellSize;
+        const gStartY = startY % cellSize;
+        const shiftX = gStartX < 0 ? gStartX + cellSize : gStartX;
+        for (let x = shiftX; x <= p.width; x += cellSize) {
+          p.line(x, 0, x, p.height);
+        }
+        const shiftY = gStartY < 0 ? gStartY + cellSize : gStartY;
+        for (let y = shiftY; y <= p.height; y += cellSize) {
+          p.line(0, y, p.width, y);
+        }
+        p.pop();
+      }
 
       p.push();
       p.translate(startX, startY);
@@ -363,6 +384,92 @@ export function setupP5() {
               ctx.restore();
             }
           }
+        }
+      }
+      p.pop();
+
+      // --- Rulers System ---
+      const rulerSize = 24;
+      p.push();
+      p.noStroke();
+      p.fill(250); // General ruler background
+      p.rect(0, 0, p.width, rulerSize);
+      p.rect(0, 0, rulerSize, p.height);
+
+      // Ruler highlight matching content bounds
+      p.fill(234, 244, 246); // Highlight colour (Figma-like light blue-grey)
+      const hlXEdge = Math.max(rulerSize, startX);
+      const hlXEnd = Math.min(p.width, startX + totalW);
+      if (hlXEnd > hlXEdge) {
+        p.rect(hlXEdge, 0, hlXEnd - hlXEdge, rulerSize);
+      }
+      const hlYEdge = Math.max(rulerSize, startY);
+      const hlYEnd = Math.min(p.height, startY + totalH);
+      if (hlYEnd > hlYEdge) {
+        p.rect(0, hlYEdge, rulerSize, hlYEnd - hlYEdge);
+      }
+
+      // Top-Left corner block
+      p.fill(250);
+      p.rect(0, 0, rulerSize, rulerSize);
+      p.stroke(230);
+      p.strokeWeight(1);
+      p.line(0, rulerSize, p.width, rulerSize);
+      p.line(rulerSize, 0, rulerSize, p.height);
+
+      // Ticks and Text
+      p.fill(180);
+      p.stroke(230);
+      p.strokeWeight(1);
+      p.textSize(10);
+      p.textAlign(p.LEFT, p.TOP);
+
+      // Calculate reasonable number steps
+      let stepUnit = Math.max(1, Math.ceil(40 / cellSize));
+      const m10 = Math.pow(10, Math.floor(Math.log10(stepUnit)));
+      const base = stepUnit / m10;
+      if (base > 5) stepUnit = 10 * m10;
+      else if (base > 2) stepUnit = 5 * m10;
+      else if (base > 1) stepUnit = 2 * m10;
+      else stepUnit = 1 * m10;
+
+      // Top Ruler ticks
+      const startValX = Math.floor((rulerSize - startX) / cellSize);
+      const endValX = Math.ceil((p.width - startX) / cellSize);
+      for (let v = startValX; v <= endValX; v++) {
+        const px = startX + v * cellSize;
+        if (px < rulerSize) continue;
+        if (v % stepUnit === 0) {
+          p.line(px, rulerSize - 8, px, rulerSize);
+          p.push();
+          p.noStroke();
+          p.text(v, px + 3, 2);
+          p.pop();
+        } else if (v % (stepUnit / 2) === 0 || stepUnit < 5) {
+          p.line(px, rulerSize - 5, px, rulerSize);
+        } else if (cellSize > 10) {
+          p.line(px, rulerSize - 3, px, rulerSize);
+        }
+      }
+
+      // Left Ruler ticks
+      const startValY = Math.floor((rulerSize - startY) / cellSize);
+      const endValY = Math.ceil((p.height - startY) / cellSize);
+      for (let v = startValY; v <= endValY; v++) {
+        const py = startY + v * cellSize;
+        if (py < rulerSize) continue;
+        if (v % stepUnit === 0) {
+          p.line(rulerSize - 8, py, rulerSize, py);
+          p.push();
+          p.translate(rulerSize - 12, py + 3);
+          p.rotate(-p.HALF_PI);
+          p.noStroke();
+          p.text(v, 0, 0);
+          p.pop();
+        } else if (v % (stepUnit / 2) === 0 || stepUnit < 5) {
+          p.line(rulerSize - 5, py, rulerSize, py);
+        } else if (cellSize > 10) {
+          p.line(rulerSize - 3, py, rulerSize, py);
         }
       }
       p.pop();

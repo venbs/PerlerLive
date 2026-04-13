@@ -248,7 +248,40 @@ export function setupP5() {
 
     AppState.loadImage = (url) => {
       p.loadImage(url, (img) => {
-        AppState.originalImage = img;
+        // Find visible bounding box to autocrop large transparent areas
+        img.loadPixels();
+        let minX = img.width, maxX = 0, minY = img.height, maxY = 0;
+        let hasVisibleContent = false;
+        
+        for (let y = 0; y < img.height; y++) {
+          for (let x = 0; x < img.width; x++) {
+            const idx = (y * img.width + x) * 4;
+            const alpha = img.pixels[idx + 3];
+            // Treat heavily transparent pixels as empty to shrink bounds tightly
+            if (alpha > 10) { 
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+              hasVisibleContent = true;
+            }
+          }
+        }
+
+        if (hasVisibleContent) {
+          const cropW = maxX - minX + 1;
+          const cropH = maxY - minY + 1;
+          // Only crop if there's actually empty space
+          if (cropW < img.width || cropH < img.height) {
+            AppState.originalImage = img.get(minX, minY, cropW, cropH);
+          } else {
+            AppState.originalImage = img;
+          }
+        } else {
+          // Fallback if totally transparent
+          AppState.originalImage = img;
+        }
+
         offsetX = 0; // Reset pan
         offsetY = 0;
         processImage();

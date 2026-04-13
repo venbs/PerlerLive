@@ -282,17 +282,7 @@ export function setupP5() {
       const colors = [...AppState.customColors];
       colors[index] = newColor;
 
-      const uniqueColors = [];
-      const seen = new Set();
-      for (const c of colors) {
-        const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          uniqueColors.push(c);
-        }
-      }
-
-      AppState.customColors = uniqueColors;
+      AppState.customColors = colors;
       processImage();
     };
 
@@ -368,55 +358,83 @@ export function setupP5() {
 
       const inPointContainer = utils.PointContainer.fromUint8Array(pg.pixels, w, h);
 
+      // We ALWAYS quantize by building a palette or using the previous extracted palette
+      // This ensures if user edits a color in the UI, they only "override" it.
       let palette;
-      if (AppState.isCustomColors && AppState.customColors && AppState.customColors.length > 0) {
+      if (AppState.isCustomColors && AppState.extractedColors && AppState.extractedColors.length > 0) {
         palette = new utils.Palette();
-        AppState.customColors.forEach(c => {
-          palette.add(utils.Point.createByRGBA(c[0], c[1], c[2], c[3] !== undefined ? c[3] : 255));
+        AppState.extractedColors.forEach(c => {
+          palette.add(utils.Point.createByRGBA(c[0], c[1], c[2], 255));
         });
       } else {
         palette = buildPaletteSync([inPointContainer], {
           colors: AppState.colorCount,
           colorDistanceFormula: 'euclidean'
         });
+        const pointArray = palette.getPointContainer().getPointArray();
+        AppState.extractedColors = pointArray.map(pt => [pt.r, pt.g, pt.b, 255]);
       }
-
-      const pointArray = palette.getPointContainer().getPointArray();
-      const colors = pointArray.map(pt => [pt.r, pt.g, pt.b, pt.a !== undefined ? pt.a : 255]);
-
-      AppState.customColors = colors;
 
       const outPointContainer = applyPaletteSync(inPointContainer, palette, {
         imageQuantization: AppState.dithering ? 'floyd-steinberg' : 'nearest'
       });
       
       const outPixels = outPointContainer.toUint8Array();
-      
-      // Calculate bead counts for each color
+
+      // If this is a fresh extraction (not editing colors manually), set customColors to extractedColors
+      if (!AppState.isCustomColors) {
+         AppState.customColors = AppState.extractedColors.map(c => [...c]);
+      }
+
+      // We need to map extractedColors to customColors
       const colorCounts = {};
-      colors.forEach(c => {
-        const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
-        colorCounts[key] = 0;
-      });
+      AppState.customColors.forEach((_, i) => { colorCounts[i] = 0; });
+      
+      // Match each pixel back to the index in extracted colors
+      const findColorIndex = (r, g, b, a) => {
+         // Because outPixels are mapped perfectly to extractedColors, we just find exact match
+         for (let i = 0; i < AppState.extractedColors.length; i++) {
+           const c = AppState.extractedColors[i];
+           if (c[0] === r && c[1] === g && c[2] === b) return i;
+         }
+         return 0; // Fallback
+      };
 
       for (let i = 0; i < outPixels.length; i += 4) {
         if (outPixels[i + 3] > 128) {
-          const key = `${outPixels[i]},${outPixels[i + 1]},${outPixels[i + 2]},${outPixels[i + 3]}`;
-          if (colorCounts[key] !== undefined) {
-             colorCounts[key]++;
-          }
+          const idx = findColorIndex(outPixels[i], outPixels[i + 1], outPixels[i + 2], outPixels[i + 3]);
+          colorCounts[idx]++;
+          
+          // Replace it with the custom user color
+          const mappedColor = AppState.customColors[idx];
+          outPixels[i] = mappedColor[0];
+          outPixels[i + 1] = mappedColor[1];
+          outPixels[i + 2] = mappedColor[2];
+          // Keep original alpha
         }
       }
 
-      const colorsWithCounts = colors.map(c => {
-         const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
+      let colorDataObjects = AppState.customColors.map((c, idx) => {
          return {
            rgba: c,
-           count: colorCounts[key] || 0
+           count: colorCounts[idx] || 0,
+           originalIndex: idx
          };
       });
 
-      updatePaletteUI(colorsWithCounts);
+      // ONLY sort on fresh generation
+      if (!AppState.isCustomColors) {
+         colorDataObjects.sort((a, b) => b.count - a.count);
+         // Once sorted, we must update customColors and extractedColors to match the sorted order!
+         AppState.customColors = colorDataObjects.map(obj => obj.rgba);
+         const newExtractedColors = colorDataObjects.map(obj => AppState.extractedColors[obj.originalIndex]);
+         AppState.extractedColors = newExtractedColors;
+         
+         // Remap the data objects so their originalIndex points correctly again
+         colorDataObjects = colorDataObjects.map((obj, i) => ({...obj, originalIndex: i}));
+      }
+
+      updatePaletteUI(colorDataObjects);
 
       processedData = {
         width: w,

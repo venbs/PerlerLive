@@ -67,8 +67,11 @@ function setupUI() {
   const sliderEvent = isMobile() ? 'change' : 'input';
 
   resInput.addEventListener(sliderEvent, (e) => {
-    const val = parseInt(e.target.value);
-    resVal.textContent = val + 'px';
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) return;
+    if (val < 16) val = 16;
+    if (val > 128) val = 128;
+    if (resVal) resVal.textContent = val + 'px';
     AppState.resolution = val;
     requestUpdate();
   });
@@ -385,14 +388,10 @@ export function updatePaletteUI(colorDataObjArray) {
     ] : null;
   };
 
-  // Create a sorted copy by count, preserving original index to update state correctly
-  const sortedData = colorDataObjArray.map((obj, i) => ({ ...obj, originalIndex: i }))
-                                      .sort((a, b) => b.count - a.count);
-
-  sortedData.forEach((dataObj) => {
+  colorDataObjArray.forEach((dataObj, index) => {
     const col = dataObj.rgba;
     const count = dataObj.count;
-    const originalIndex = dataObj.originalIndex;
+    const originalIndex = index;
     
     // List item wrapper
     const listItem = document.createElement('div');

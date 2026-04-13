@@ -66,14 +66,23 @@ function setupUI() {
   // On mobile, use 'change' (fire on release) instead of 'input' (fire on drag)
   const sliderEvent = isMobile() ? 'change' : 'input';
 
-  resInput.addEventListener(sliderEvent, (e) => {
-    let val = parseInt(e.target.value);
-    if (isNaN(val)) return;
-    if (val < 16) val = 16;
-    if (val > 128) val = 128;
-    if (resVal) resVal.textContent = val + 'px';
-    AppState.resolution = val;
-    requestUpdate();
+  let resTimeout;
+  resInput.addEventListener('input', (e) => {
+    clearTimeout(resTimeout);
+    resTimeout = setTimeout(() => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val)) val = 64; // fallback to default
+      if (val < 16) val = 16;
+      if (val > 128) val = 128;
+      
+      e.target.value = val; // visually reflect clamped value
+      if (resVal) resVal.textContent = val + 'px';
+      
+      if (AppState.resolution !== val) {
+        AppState.resolution = val;
+        requestUpdate();
+      }
+    }, 500);
   });
 
   colorRadios.forEach(radio => {

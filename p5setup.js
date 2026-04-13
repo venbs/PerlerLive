@@ -58,109 +58,147 @@ export function setupP5() {
       // Auto-load default image
       AppState.loadImage(defaultImageURL);
 
-      canvas.mousePressed((e) => {
-        // Prevent pan if clicking outside canvas or on UI
-        if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
-      });
-
       canvas.mouseWheel((e) => {
         if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
         const zoomSpeed = 0.15;
         const direction = e.deltaY > 0 ? -1 : 1;
+        const oldZoom = AppState.zoomScale;
+        
         AppState.zoomScale *= (1 + direction * zoomSpeed);
         AppState.zoomScale = Math.max(0.05, Math.min(30, AppState.zoomScale));
+        
+        const zoomRatio = AppState.zoomScale / oldZoom;
+        const halfW = window.innerWidth / 2;
+        const halfH = window.innerHeight / 2;
+        
+        offsetX = e.clientX - halfW - (e.clientX - halfW - offsetX) * zoomRatio;
+        offsetY = e.clientY - halfH - (e.clientY - halfH - offsetY) * zoomRatio;
+        
         p.redraw();
-        return false;
+        return false; // Prevent page scroll
       });
 
-      // --- Native Touch gesture support (mobile) to guarantee preventDefault & passive: false ---
+      // --- RAW TOUCH & MOUSE EVENTS ---
+      // We use native touch events for mobile, bypassing P5 abstractions or Pointer Events
+      // which can be buggy on Safari iOS during gesture recognition.
+      
       const cvs = canvas.elt;
+      cvs.addEventListener('contextmenu', e => e.preventDefault()); // Prevent long press menu
+      
       let initialPinchDist = 0;
-      let initialZoomScale = 1;
-      let isTouchPanning = false;
-      let touchPanStartX = 0;
-      let touchPanStartY = 0;
+      let initialZoom = 1;
+      let initialPinchCenter = {x: 0, y: 0};
+      let initialOffsets = {x: 0, y: 0};
+      
+      let panStart = {x: 0, y: 0};
+      let lastOffsets = {x: 0, y: 0};
+      let isPanning = false;
+      let isTouchActive = false; // Crucial: prevents DevTools/Safari from firing fallback mouse events
 
-      cvs.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-          initialPinchDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
-          initialZoomScale = AppState.zoomScale;
-          isTouchPanning = false;
-        } else if (e.touches.length === 1) {
-          isTouchPanning = true;
-          touchPanStartX = e.touches[0].clientX - offsetX;
-          touchPanStartY = e.touches[0].clientY - offsetY;
+      // Mouse Events for Desktop
+      cvs.addEventListener('mousedown', (e) => {
+        if (isTouchActive || e.button !== 0) return;
+        isPanning = true;
+        panStart = {x: e.clientX, y: e.clientY};
+        lastOffsets = {x: offsetX, y: offsetY};
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isTouchActive) return;
+        if (isPanning) {
+          offsetX = lastOffsets.x + (e.clientX - panStart.x);
+          offsetY = lastOffsets.y + (e.clientY - panStart.y);
+          p.redraw();
         }
-        e.preventDefault();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isTouchActive) return;
+        isPanning = false;
+      });
+
+      // Touch Events for Mobile (bulletproof)
+      cvs.addEventListener('touchstart', (e) => {
+        isTouchActive = true;
+        e.preventDefault(); // Prevents all native gestures, double-tap zoom, and P5 simulated mouse events!
+        
+        if (e.touches.length === 1) {
+          isPanning = true;
+          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+          lastOffsets = {x: offsetX, y: offsetY};
+        } else if (e.touches.length >= 2) {
+          isPanning = false;
+          
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+          initialZoom = AppState.zoomScale;
+          
+          initialPinchCenter = {
+            x: (t1.clientX + t2.clientX) / 2,
+            y: (t1.clientY + t2.clientY) / 2
+          };
+          initialOffsets = {x: offsetX, y: offsetY};
+        }
       }, { passive: false });
 
       cvs.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2 && initialPinchDist > 0) {
-          const currentDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
-          const scale = currentDist / initialPinchDist;
-          AppState.zoomScale = Math.max(0.05, Math.min(30, initialZoomScale * scale));
-          isTouchPanning = false;
+        e.preventDefault(); // Maintain absolute control over screen move
+        
+        if (e.touches.length === 1 && isPanning) {
+          offsetX = lastOffsets.x + (e.touches[0].clientX - panStart.x);
+          offsetY = lastOffsets.y + (e.touches[0].clientY - panStart.y);
           p.redraw();
-        } else if (e.touches.length === 1 && isTouchPanning) {
-          offsetX = e.touches[0].clientX - touchPanStartX;
-          offsetY = e.touches[0].clientY - touchPanStartY;
-          p.redraw();
+        } else if (e.touches.length >= 2) {
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+          
+          if (initialPinchDist > 0) {
+            const scale = currentDist / initialPinchDist;
+            const newZoomScale = Math.max(0.05, Math.min(30, initialZoom * scale));
+            
+            const currentCenter = {
+              x: (t1.clientX + t2.clientX) / 2,
+              y: (t1.clientY + t2.clientY) / 2
+            };
+            
+            const zoomRatio = newZoomScale / initialZoom;
+            const halfW = window.innerWidth / 2;
+            const halfH = window.innerHeight / 2;
+            
+            offsetX = currentCenter.x - halfW - (initialPinchCenter.x - halfW - initialOffsets.x) * zoomRatio;
+            offsetY = currentCenter.y - halfH - (initialPinchCenter.y - halfH - initialOffsets.y) * zoomRatio;
+
+            AppState.zoomScale = newZoomScale;
+            p.redraw();
+          }
         }
-        e.preventDefault();
       }, { passive: false });
 
-      cvs.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-          initialPinchDist = 0;
-        }
+      const handleTouchEnd = (e) => {
+        e.preventDefault();
+        
         if (e.touches.length === 0) {
-          isTouchPanning = false;
+          isPanning = false;
+          // small delay before releasing touch lock to catch trailing mouseup events natively spawned by OS.
+          setTimeout(() => { if (e.touches.length === 0) isTouchActive = false; }, 300);
         } else if (e.touches.length === 1) {
-          // Re-init single finger pan on the remaining finger
-          isTouchPanning = true;
-          touchPanStartX = e.touches[0].clientX - offsetX;
-          touchPanStartY = e.touches[0].clientY - offsetY;
+          // Re-init pan with the remaining finger so it doesn't jump
+          isPanning = true;
+          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+          lastOffsets = {x: offsetX, y: offsetY};
         }
-      }, { passive: false });
+      };
+
+      cvs.addEventListener('touchend', handleTouchEnd, { passive: false });
+      cvs.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     };
 
     p.windowResized = () => {
       p.resizeCanvas(window.innerWidth, window.innerHeight);
       p.redraw();
     };
-
-    let isMouseDragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-
-    p.mousePressed = (e) => {
-      if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
-
-      isMouseDragging = true;
-      dragStartX = p.mouseX - offsetX;
-      dragStartY = p.mouseY - offsetY;
-    };
-
-    p.mouseDragged = (e) => {
-      if (isMouseDragging) {
-        offsetX = p.mouseX - dragStartX;
-        offsetY = p.mouseY - dragStartY;
-        p.redraw();
-      }
-    };
-
-    p.mouseReleased = () => {
-      isMouseDragging = false;
-    };
-
-    // --- Native Touch gesture support (mobile) ---
-    // Moved to native event listeners inside setup() to ensure { passive: false }
 
     AppState.loadImage = (url) => {
       p.loadImage(url, (img) => {

@@ -94,6 +94,19 @@ export function setupP5() {
       let lastOffsets = {x: 0, y: 0};
       let isPanning = false;
       let isTouchActive = false; // Crucial: prevents DevTools/Safari from firing fallback mouse events
+      
+      let pinchTouchIds = []; // Track actual fingers by ID to prevent random jumps if a 3rd finger touches
+      let drawPending = false; // Prevents tearing / jumping caused by synchronous rapid redraws
+
+      function triggerThrottledRedraw() {
+        if (!drawPending) {
+          drawPending = true;
+          requestAnimationFrame(() => {
+            p.redraw();
+            drawPending = false;
+          });
+        }
+      }
 
       // Mouse Events for Desktop
       cvs.addEventListener('mousedown', (e) => {
@@ -108,7 +121,7 @@ export function setupP5() {
         if (isPanning) {
           offsetX = lastOffsets.x + (e.clientX - panStart.x);
           offsetY = lastOffsets.y + (e.clientY - panStart.y);
-          p.redraw();
+          triggerThrottledRedraw();
         }
       });
 
@@ -124,34 +137,49 @@ export function setupP5() {
         
         if (e.touches.length === 1) {
           isPanning = true;
+          pinchTouchIds = [];
           panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
           lastOffsets = {x: offsetX, y: offsetY};
         } else if (e.touches.length >= 2) {
-          isPanning = false;
-          
-          const t1 = e.touches[0];
-          const t2 = e.touches[1];
-          initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-          initialZoom = AppState.zoomScale;
-          
-          initialPinchCenter = {
-            x: (t1.clientX + t2.clientX) / 2,
-            y: (t1.clientY + t2.clientY) / 2
-          };
-          initialOffsets = {x: offsetX, y: offsetY};
+          // If we transition from 1 to 2, or start with 2+ touches, lock onto the first two fingers detected
+          if (pinchTouchIds.length < 2) {
+            isPanning = false;
+            
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            pinchTouchIds = [t1.identifier, t2.identifier];
+            
+            initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+            initialZoom = AppState.zoomScale;
+            
+            initialPinchCenter = {
+              x: (t1.clientX + t2.clientX) / 2,
+              y: (t1.clientY + t2.clientY) / 2
+            };
+            initialOffsets = {x: offsetX, y: offsetY};
+          }
         }
       }, { passive: false });
 
       cvs.addEventListener('touchmove', (e) => {
         e.preventDefault(); // Maintain absolute control over screen move
         
-        if (e.touches.length === 1 && isPanning) {
-          offsetX = lastOffsets.x + (e.touches[0].clientX - panStart.x);
-          offsetY = lastOffsets.y + (e.touches[0].clientY - panStart.y);
-          p.redraw();
-        } else if (e.touches.length >= 2) {
-          const t1 = e.touches[0];
-          const t2 = e.touches[1];
+        if (isPanning && e.touches.length > 0) {
+          // Find the primary finger to pan
+          const t = e.touches[0];
+          offsetX = lastOffsets.x + (t.clientX - panStart.x);
+          offsetY = lastOffsets.y + (t.clientY - panStart.y);
+          triggerThrottledRedraw();
+        } else if (pinchTouchIds.length === 2) {
+          // Find the exact two fingers we originally tracked for this pinch session
+          let t1, t2;
+          for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier === pinchTouchIds[0]) t1 = e.touches[i];
+            if (e.touches[i].identifier === pinchTouchIds[1]) t2 = e.touches[i];
+          }
+          
+          if (!t1 || !t2) return; // If one of the original fingers is lost, ignore the movement
+
           const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
           
           if (initialPinchDist > 0) {
@@ -171,7 +199,7 @@ export function setupP5() {
             offsetY = currentCenter.y - halfH - (initialPinchCenter.y - halfH - initialOffsets.y) * zoomRatio;
 
             AppState.zoomScale = newZoomScale;
-            p.redraw();
+            triggerThrottledRedraw();
           }
         }
       }, { passive: false });
@@ -179,12 +207,30 @@ export function setupP5() {
       const handleTouchEnd = (e) => {
         e.preventDefault();
         
+        let stillHasT1 = false;
+        let stillHasT2 = false;
+        
+        if (pinchTouchIds.length === 2) {
+          for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier === pinchTouchIds[0]) stillHasT1 = true;
+            if (e.touches[i].identifier === pinchTouchIds[1]) stillHasT2 = true;
+          }
+        }
+
         if (e.touches.length === 0) {
           isPanning = false;
+          pinchTouchIds = [];
           // small delay before releasing touch lock to catch trailing mouseup events natively spawned by OS.
           setTimeout(() => { if (e.touches.length === 0) isTouchActive = false; }, 300);
+        } else if (pinchTouchIds.length === 2 && (!stillHasT1 || !stillHasT2)) {
+          // We were pinching, but one of the pinch fingers was lifted. Revert to panning with the remaining finger.
+          pinchTouchIds = [];
+          isPanning = true;
+          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+          lastOffsets = {x: offsetX, y: offsetY};
         } else if (e.touches.length === 1) {
-          // Re-init pan with the remaining finger so it doesn't jump
+          // Safe fallback
+          pinchTouchIds = [];
           isPanning = true;
           panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
           lastOffsets = {x: offsetX, y: offsetY};

@@ -16,9 +16,9 @@ export const AppState = {
   cartoonStroke: 0.005,
   perlerRadius: 50,
   perlerGap: 1, // Absolute gap size 0.5-3px
-  bevelSize: 10, // Bevel stroke thickness 0-20%
+  bevelSize: 5, // Bevel stroke thickness 0-20%
   zoomScale: 1, // Multiplier for canvas scaling (mouse wheel only)
-  holeSize: 20, // Percentage 0-50
+  holeSize: 40, // Percentage 0-60
   triggerUpdate: null,
   triggerRedraw: null,
   exportPNG: null,
@@ -385,16 +385,43 @@ export function setupP5() {
       const colors = pointArray.map(pt => [pt.r, pt.g, pt.b, pt.a !== undefined ? pt.a : 255]);
 
       AppState.customColors = colors;
-      updatePaletteUI(colors);
 
       const outPointContainer = applyPaletteSync(inPointContainer, palette, {
         imageQuantization: AppState.dithering ? 'floyd-steinberg' : 'nearest'
       });
+      
+      const outPixels = outPointContainer.toUint8Array();
+      
+      // Calculate bead counts for each color
+      const colorCounts = {};
+      colors.forEach(c => {
+        const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
+        colorCounts[key] = 0;
+      });
+
+      for (let i = 0; i < outPixels.length; i += 4) {
+        if (outPixels[i + 3] > 128) {
+          const key = `${outPixels[i]},${outPixels[i + 1]},${outPixels[i + 2]},${outPixels[i + 3]}`;
+          if (colorCounts[key] !== undefined) {
+             colorCounts[key]++;
+          }
+        }
+      }
+
+      const colorsWithCounts = colors.map(c => {
+         const key = `${c[0]},${c[1]},${c[2]},${c[3]}`;
+         return {
+           rgba: c,
+           count: colorCounts[key] || 0
+         };
+      });
+
+      updatePaletteUI(colorsWithCounts);
 
       processedData = {
         width: w,
         height: h,
-        pixels: outPointContainer.toUint8Array(),
+        pixels: outPixels,
         cols: w,
         rows: h
       };

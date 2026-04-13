@@ -259,11 +259,15 @@ function setupMobile() {
   });
 
   // Close sheet when tapping canvas
-  document.getElementById('canvas-container').addEventListener('click', (e) => {
-    if (activeTab && e.target.classList.contains('p5Canvas')) {
+  const handleCanvasInteraction = () => {
+    if (activeTab) {
       closeSheet();
     }
-  });
+  };
+  
+  const canvasContainer = document.getElementById('canvas-container');
+  canvasContainer.addEventListener('mousedown', handleCanvasInteraction);
+  canvasContainer.addEventListener('touchstart', handleCanvasInteraction, { passive: true });
 }
 
 // Helper: move elements matching selectors from source to dest
@@ -351,10 +355,10 @@ function positionPickrNearSwatch(swatch, appEl) {
   appEl.style.top = top + 'px';
 }
 
-export function updatePaletteUI(colors) {
+export function updatePaletteUI(colorDataObjArray) {
   const container = document.getElementById('palette-container');
   container.innerHTML = '';
-  if (colors.length === 0) {
+  if (colorDataObjArray.length === 0) {
     container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem;">尚未提取</span>';
   }
   
@@ -365,11 +369,63 @@ export function updatePaletteUI(colors) {
   });
   pickrInstances = [];
 
-  colors.forEach((col, index) => {
+  // Helper to convert rgb to hex string
+  const rgbaToHex = (r, g, b) => {
+    return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+  };
+  
+  // Helper to convert hex string to rgb
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16),
+      255
+    ] : null;
+  };
+
+  // Create a sorted copy by count, preserving original index to update state correctly
+  const sortedData = colorDataObjArray.map((obj, i) => ({ ...obj, originalIndex: i }))
+                                      .sort((a, b) => b.count - a.count);
+
+  sortedData.forEach((dataObj) => {
+    const col = dataObj.rgba;
+    const count = dataObj.count;
+    const originalIndex = dataObj.originalIndex;
+    
+    // List item wrapper
+    const listItem = document.createElement('div');
+    listItem.className = 'palette-list-item';
+    
+    // Swatch
     const swatch = document.createElement('div');
     swatch.className = 'color-swatch';
     swatch.style.backgroundColor = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`;
-    container.appendChild(swatch);
+    
+    // HEX Input
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.className = 'color-hex-input';
+    hexInput.value = rgbaToHex(col[0], col[1], col[2]);
+    hexInput.addEventListener('change', (e) => {
+      const newRgba = hexToRgb(e.target.value.trim());
+      if (newRgba && AppState.updateCustomColor) {
+        AppState.updateCustomColor(originalIndex, newRgba);
+      } else {
+        e.target.value = rgbaToHex(col[0], col[1], col[2]); // Revert on invalid
+      }
+    });
+    
+    // Count label
+    const countLabel = document.createElement('div');
+    countLabel.className = 'color-count-label';
+    countLabel.textContent = `x${count}`;
+    
+    listItem.appendChild(swatch);
+    listItem.appendChild(hexInput);
+    listItem.appendChild(countLabel);
+    container.appendChild(listItem);
 
     // Use a 1px invisible anchor in body — this gives nanopop a real DOM reference
     // but we override its calculated position ourselves on show
@@ -381,11 +437,11 @@ export function updatePaletteUI(colors) {
       el: anchor,
       theme: 'monolith',
       default: `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`,
-      defaultRepresentation: 'HEXA',
+      defaultRepresentation: 'HEX',
       swatches: null,
       components: {
         preview: true,
-        opacity: true,
+        opacity: false,
         hue: true,
         interaction: {
           hex: true,
@@ -413,7 +469,7 @@ export function updatePaletteUI(colors) {
     pickr.on('save', (color, instance) => {
       const rgba = color.toRGBA();
       if (AppState.updateCustomColor) {
-        AppState.updateCustomColor(index, [rgba[0], rgba[1], rgba[2], rgba[3] * 255]);
+        AppState.updateCustomColor(originalIndex, [rgba[0], rgba[1], rgba[2], rgba[3] * 255]);
       }
       instance.hide();
     });

@@ -1,29 +1,238 @@
 import p5 from 'p5';
-import { utils, buildPaletteSync, applyPaletteSync } from 'image-q';
-import { updatePaletteUI, hideLoading } from './main.js';
-import defaultImageURL from './src/assets/hello.PNG';
-import { fip } from './src/p5.fip.js';
+import { hideLoading } from './main.js';
+
+// =============================================
+// Palette Presets
+// =============================================
+export const PALETTES = {
+  field: {
+    name: 'field',
+    colors: [
+      [242, 242, 242],
+      [135, 206, 235],
+      [70, 130, 180],
+      [118, 162, 112],
+      [82, 108, 80],
+      [244, 215, 165],
+      [214, 173, 109],
+      [174, 129, 109],
+      [104, 77, 75],
+      [55, 55, 55],
+    ]
+  },
+  underwater: {
+    name: 'underwater',
+    colors: [
+      [30, 120, 180],
+      [44, 156, 158],
+      [65, 193, 173],
+      [255, 105, 97],
+      [244, 164, 96],
+      [210, 94, 149],
+      [119, 190, 217],
+      [76, 46, 63],
+      [236, 240, 241],
+      [20, 28, 36],
+    ]
+  },
+  forest: {
+    name: 'forest',
+    colors: [
+      [34, 47, 34],
+      [65, 94, 50],
+      [121, 142, 73],
+      [179, 163, 76],
+      [104, 80, 60],
+      [146, 112, 82],
+      [195, 195, 216],
+      [161, 161, 188],
+      [222, 226, 228],
+      [108, 117, 103],
+    ],
+  },
+  flame: {
+    name: 'flame',
+    colors: [
+      [255, 112, 31],
+      [245, 165, 67],
+      [255, 215, 0],
+      [179, 87, 42],
+      [135, 56, 50],
+      [59, 47, 60],
+      [85, 71, 93],
+      [116, 96, 125],
+      [25, 25, 35],
+      [213, 149, 79],
+    ],
+  },
+  dusk: {
+    name: 'dusk',
+    colors: [
+      [10, 10, 20],
+      [30, 40, 70],
+      [70, 50, 104],
+      [214, 108, 102],
+      [244, 147, 114],
+      [255, 222, 173],
+      [44, 56, 94],
+      [120, 89, 142],
+      [255, 255, 255],
+      [142, 156, 184],
+    ]
+  },
+  grayscale: {
+    name: 'grayscale',
+    colors: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [255, 255, 255],
+    ]
+  },
+  vampire: {
+    name: 'vampire',
+    colors: [
+      [15, 16, 21],
+      [30, 32, 40],
+      [50, 53, 65],
+      [40, 42, 50],
+      [100, 15, 20],
+      [200, 30, 40],
+      [230, 60, 50],
+      [255, 100, 70],
+      [255, 160, 110],
+      [255, 210, 170],
+    ]
+  },
+  ink: {
+    name: 'ink',
+    colors: [
+      [8, 8, 8],
+      [30, 25, 30],
+      [70, 40, 50],
+      [110, 50, 60],
+      [200, 70, 80],
+      [100, 70, 50],
+      [140, 130, 110],
+      [160, 180, 60],
+      [210, 210, 210],
+      [255, 255, 255],
+    ]
+  },
+  galaxy: {
+    name: 'galaxy',
+    colors: [
+      [5, 6, 20],
+      [10, 12, 40],
+      [20, 30, 80],
+      [40, 60, 160],
+      [80, 110, 230],
+      [200, 70, 110],
+      [250, 100, 140],
+      [250, 180, 110],
+      [255, 220, 160],
+      [255, 255, 255],
+    ]
+  },
+  acid: {
+    name: 'acid',
+    colors: [
+      [8, 7, 9],
+      [40, 30, 50],
+      [60, 100, 230],
+      [110, 80, 200],
+      [230, 110, 200],
+      [250, 140, 230],
+      [50, 200, 80],
+      [250, 200, 50],
+      [230, 230, 250],
+      [255, 255, 255],
+    ]
+  },
+  sand: {
+    name: 'sand',
+    colors: [
+      [59, 36, 23],
+      [92, 58, 33],
+      [139, 69, 19],
+      [160, 82, 45],
+      [188, 143, 143],
+      [210, 180, 140],
+      [222, 184, 135],
+      [238, 203, 173],
+      [250, 235, 215],
+      [255, 255, 240],
+    ]
+  }
+};
+
+// =============================================
+// Active Palette & LUT
+// =============================================
+let activePaletteKey = 'field';
+let activePalette = PALETTES.field.colors;
+
+// LUT: maps every RGB → index into activePalette (16 MB Uint8Array)
+const colorLUT = new Uint8Array(16777216); // 256^3
+let isLUTBuilt = false;
+
+function buildLUT() {
+  if (isLUTBuilt) return;
+  const pal = activePalette;
+
+  // Match the reference project's palette behavior: every preset uses the same
+  // closest-color lookup in RGB space instead of palette-specific hue buckets.
+  for (let r = 0; r < 256; r += 2) {
+    for (let g = 0; g < 256; g += 2) {
+      for (let b = 0; b < 256; b += 2) {
+        let minDist = Infinity;
+        let pidx = 0;
+        for (let i = 0; i < pal.length; i++) {
+          const dr = r - pal[i][0];
+          const dg = g - pal[i][1];
+          const db = b - pal[i][2];
+          const dist = dr * dr + dg * dg + db * db;
+          if (dist < minDist) { minDist = dist; pidx = i; }
+        }
+
+        for (let dr2 = 0; dr2 < 2; dr2++) {
+          for (let dg2 = 0; dg2 < 2; dg2++) {
+            for (let db2 = 0; db2 < 2; db2++) {
+              colorLUT[(r + dr2) * 65536 + (g + dg2) * 256 + (b + db2)] = pidx;
+            }
+          }
+        }
+      }
+    }
+  }
+  isLUTBuilt = true;
+}
+
+export function switchPalette(key) {
+  if (!PALETTES[key] || key === activePaletteKey) return;
+  activePaletteKey = key;
+  activePalette = PALETTES[key].colors;
+  isLUTBuilt = false; // Force LUT rebuild on next frame
+}
 
 // Global state
 export const AppState = {
-  originalImage: null,
+  videoCapture: null,
   resolution: 64,
-  colorCount: 16,
-  isCustomColors: false,
-  customColors: null,
-  dithering: false,
-  cartoonFilter: false,
-  cartoonStroke: 0.005,
   perlerRadius: 50,
   perlerGap: 1, // Absolute gap size 0.5-3px
   bevelSize: 5, // Bevel stroke thickness 0-20%
-  zoomScale: 1, // Multiplier for canvas scaling (mouse wheel only)
   holeSize: 40, // Percentage 0-60
   triggerUpdate: null,
   triggerRedraw: null,
   exportPNG: null,
-  exportSVG: null,
-  loadImage: null
+  exportSVG: null
 };
 
 const isMobile = () => window.innerWidth <= 768;
@@ -55,190 +264,19 @@ export function setupP5() {
 
       AppState.exportSVG = exportManualSVG;
 
-      // Auto-load default image
-      AppState.loadImage(defaultImageURL);
+      // Start Video Capture
+      AppState.videoCapture = p.createCapture(p.VIDEO);
+      AppState.videoCapture.hide();
 
-      canvas.mouseWheel((e) => {
-        if (!e.target.classList || !e.target.classList.contains('p5Canvas')) return;
-        const zoomSpeed = 0.15;
-        const direction = e.deltaY > 0 ? -1 : 1;
-        const oldZoom = AppState.zoomScale;
-        
-        AppState.zoomScale *= (1 + direction * zoomSpeed);
-        AppState.zoomScale = Math.max(0.05, Math.min(30, AppState.zoomScale));
-        
-        const zoomRatio = AppState.zoomScale / oldZoom;
-        const halfW = window.innerWidth / 2;
-        const halfH = window.innerHeight / 2;
-        
-        offsetX = e.clientX - halfW - (e.clientX - halfW - offsetX) * zoomRatio;
-        offsetY = e.clientY - halfH - (e.clientY - halfH - offsetY) * zoomRatio;
-        
-        p.redraw();
-        return false; // Prevent page scroll
-      });
-
-      // --- RAW TOUCH & MOUSE EVENTS ---
-      // We use native touch events for mobile, bypassing P5 abstractions or Pointer Events
-      // which can be buggy on Safari iOS during gesture recognition.
-      
-      const cvs = canvas.elt;
-      cvs.addEventListener('contextmenu', e => e.preventDefault()); // Prevent long press menu
-      
-      let initialPinchDist = 0;
-      let initialZoom = 1;
-      let initialPinchCenter = {x: 0, y: 0};
-      let initialOffsets = {x: 0, y: 0};
-      
-      let panStart = {x: 0, y: 0};
-      let lastOffsets = {x: 0, y: 0};
-      let isPanning = false;
-      let isTouchActive = false; // Crucial: prevents DevTools/Safari from firing fallback mouse events
-      
-      let pinchTouchIds = []; // Track actual fingers by ID to prevent random jumps if a 3rd finger touches
-      let drawPending = false; // Prevents tearing / jumping caused by synchronous rapid redraws
-
-      function triggerThrottledRedraw() {
-        if (!drawPending) {
-          drawPending = true;
-          requestAnimationFrame(() => {
-            p.redraw();
-            drawPending = false;
-          });
+      function loopProcess() {
+        if (AppState.videoCapture && AppState.videoCapture.loadedmetadata) {
+          processImage();
         }
+        requestAnimationFrame(loopProcess);
       }
+      requestAnimationFrame(loopProcess);
 
-      // Mouse Events for Desktop
-      cvs.addEventListener('mousedown', (e) => {
-        if (isTouchActive || e.button !== 0) return;
-        isPanning = true;
-        panStart = {x: e.clientX, y: e.clientY};
-        lastOffsets = {x: offsetX, y: offsetY};
-      });
 
-      window.addEventListener('mousemove', (e) => {
-        if (isTouchActive) return;
-        if (isPanning) {
-          offsetX = lastOffsets.x + (e.clientX - panStart.x);
-          offsetY = lastOffsets.y + (e.clientY - panStart.y);
-          triggerThrottledRedraw();
-        }
-      });
-
-      window.addEventListener('mouseup', () => {
-        if (isTouchActive) return;
-        isPanning = false;
-      });
-
-      // Touch Events for Mobile (bulletproof)
-      cvs.addEventListener('touchstart', (e) => {
-        isTouchActive = true;
-        e.preventDefault(); // Prevents all native gestures, double-tap zoom, and P5 simulated mouse events!
-        
-        if (e.touches.length === 1) {
-          isPanning = true;
-          pinchTouchIds = [];
-          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-          lastOffsets = {x: offsetX, y: offsetY};
-        } else if (e.touches.length >= 2) {
-          // If we transition from 1 to 2, or start with 2+ touches, lock onto the first two fingers detected
-          if (pinchTouchIds.length < 2) {
-            isPanning = false;
-            
-            const t1 = e.touches[0];
-            const t2 = e.touches[1];
-            pinchTouchIds = [t1.identifier, t2.identifier];
-            
-            initialPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-            initialZoom = AppState.zoomScale;
-            
-            initialPinchCenter = {
-              x: (t1.clientX + t2.clientX) / 2,
-              y: (t1.clientY + t2.clientY) / 2
-            };
-            initialOffsets = {x: offsetX, y: offsetY};
-          }
-        }
-      }, { passive: false });
-
-      cvs.addEventListener('touchmove', (e) => {
-        e.preventDefault(); // Maintain absolute control over screen move
-        
-        if (isPanning && e.touches.length > 0) {
-          // Find the primary finger to pan
-          const t = e.touches[0];
-          offsetX = lastOffsets.x + (t.clientX - panStart.x);
-          offsetY = lastOffsets.y + (t.clientY - panStart.y);
-          triggerThrottledRedraw();
-        } else if (pinchTouchIds.length === 2) {
-          // Find the exact two fingers we originally tracked for this pinch session
-          let t1, t2;
-          for (let i = 0; i < e.touches.length; i++) {
-            if (e.touches[i].identifier === pinchTouchIds[0]) t1 = e.touches[i];
-            if (e.touches[i].identifier === pinchTouchIds[1]) t2 = e.touches[i];
-          }
-          
-          if (!t1 || !t2) return; // If one of the original fingers is lost, ignore the movement
-
-          const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-          
-          if (initialPinchDist > 0) {
-            const scale = currentDist / initialPinchDist;
-            const newZoomScale = Math.max(0.05, Math.min(30, initialZoom * scale));
-            
-            const currentCenter = {
-              x: (t1.clientX + t2.clientX) / 2,
-              y: (t1.clientY + t2.clientY) / 2
-            };
-            
-            const zoomRatio = newZoomScale / initialZoom;
-            const halfW = window.innerWidth / 2;
-            const halfH = window.innerHeight / 2;
-            
-            offsetX = currentCenter.x - halfW - (initialPinchCenter.x - halfW - initialOffsets.x) * zoomRatio;
-            offsetY = currentCenter.y - halfH - (initialPinchCenter.y - halfH - initialOffsets.y) * zoomRatio;
-
-            AppState.zoomScale = newZoomScale;
-            triggerThrottledRedraw();
-          }
-        }
-      }, { passive: false });
-
-      const handleTouchEnd = (e) => {
-        e.preventDefault();
-        
-        let stillHasT1 = false;
-        let stillHasT2 = false;
-        
-        if (pinchTouchIds.length === 2) {
-          for (let i = 0; i < e.touches.length; i++) {
-            if (e.touches[i].identifier === pinchTouchIds[0]) stillHasT1 = true;
-            if (e.touches[i].identifier === pinchTouchIds[1]) stillHasT2 = true;
-          }
-        }
-
-        if (e.touches.length === 0) {
-          isPanning = false;
-          pinchTouchIds = [];
-          // small delay before releasing touch lock to catch trailing mouseup events natively spawned by OS.
-          setTimeout(() => { if (e.touches.length === 0) isTouchActive = false; }, 300);
-        } else if (pinchTouchIds.length === 2 && (!stillHasT1 || !stillHasT2)) {
-          // We were pinching, but one of the pinch fingers was lifted. Revert to panning with the remaining finger.
-          pinchTouchIds = [];
-          isPanning = true;
-          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-          lastOffsets = {x: offsetX, y: offsetY};
-        } else if (e.touches.length === 1) {
-          // Safe fallback
-          pinchTouchIds = [];
-          isPanning = true;
-          panStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-          lastOffsets = {x: offsetX, y: offsetY};
-        }
-      };
-
-      cvs.addEventListener('touchend', handleTouchEnd, { passive: false });
-      cvs.addEventListener('touchcancel', handleTouchEnd, { passive: false });
     };
 
     p.windowResized = () => {
@@ -246,77 +284,8 @@ export function setupP5() {
       p.redraw();
     };
 
-    AppState.loadImage = (url) => {
-      p.loadImage(url, (img) => {
-        // Find visible bounding box to autocrop large transparent areas
-        img.loadPixels();
-        let minX = img.width, maxX = 0, minY = img.height, maxY = 0;
-        let hasVisibleContent = false;
-        
-        for (let y = 0; y < img.height; y++) {
-          for (let x = 0; x < img.width; x++) {
-            const idx = (y * img.width + x) * 4;
-            const alpha = img.pixels[idx + 3];
-            // Treat heavily transparent pixels as empty to shrink bounds tightly
-            if (alpha > 10) { 
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-              if (y < minY) minY = y;
-              if (y > maxY) maxY = y;
-              hasVisibleContent = true;
-            }
-          }
-        }
-
-        if (hasVisibleContent) {
-          const cropW = maxX - minX + 1;
-          const cropH = maxY - minY + 1;
-          // Only crop if there's actually empty space
-          if (cropW < img.width || cropH < img.height) {
-            AppState.originalImage = img.get(minX, minY, cropW, cropH);
-          } else {
-            AppState.originalImage = img;
-          }
-        } else {
-          // Fallback if totally transparent
-          AppState.originalImage = img;
-        }
-
-        offsetX = 0; // Reset pan
-        offsetY = 0;
-        processImage();
-      });
-    };
-
     AppState.triggerUpdate = () => {
-      if (AppState.originalImage) {
-        processImage();
-      }
-    };
-
-    AppState.updateCustomColor = (index, newColorArray) => {
-      if (!AppState.customColors) return;
-
-      if (!newColorArray || newColorArray.length !== 4) return;
-
-      const newColor = [
-        Math.round(newColorArray[0]),
-        Math.round(newColorArray[1]),
-        Math.round(newColorArray[2]),
-        Math.round(newColorArray[3])
-      ];
-
-      AppState.isCustomColors = true;
-      const customRadio = document.querySelector('input[name="colors"][value="custom"]');
-      if (customRadio) {
-        customRadio.checked = true;
-      }
-
-      const colors = [...AppState.customColors];
-      colors[index] = newColor;
-
-      AppState.customColors = colors;
-      processImage();
+      // Only redraw trigger needed now
     };
 
     AppState.triggerRedraw = () => {
@@ -324,14 +293,16 @@ export function setupP5() {
     };
 
     function processImage() {
-      if (!AppState.originalImage) return;
+      if (!AppState.videoCapture || !AppState.videoCapture.loadedmetadata) return;
+      const videoElt = AppState.videoCapture.elt;
+      if (videoElt.videoWidth === 0 || videoElt.videoHeight === 0) return;
 
-      const img = AppState.originalImage;
+      const img = AppState.videoCapture;
 
       // Calculate target resolution
       const maxRes = AppState.resolution;
-      let w = img.width;
-      let h = img.height;
+      let w = videoElt.videoWidth;
+      let h = videoElt.videoHeight;
       if (w > h) {
         h = maxRes * (h / w);
         w = maxRes;
@@ -343,131 +314,52 @@ export function setupP5() {
       w = Math.max(1, Math.round(w));
       h = Math.max(1, Math.round(h));
 
-      let targetImg = img;
-
-      if (AppState.cartoonFilter) {
-        try {
-          // Use original resolution for cartoon filter to preserve edges
-          const fw = img.width;
-          const fh = img.height;
-          const wpg = p.createGraphics(fw, fh, p.WEBGL);
-          wpg.clear();
-          wpg.imageMode(p.CENTER);
-          // Scale up image slightly to fill the wpg correctly or just draw it
-          // In standard p5 WEBGL, image drawn at 0,0 with width/height works if centered
-          wpg.image(img, 0, 0, fw, fh);
-
-          const cartoonShader = wpg.createFilterShader(fip.cartoon);
-          cartoonShader.setUniform('edgeThreshold', 0.05);
-          cartoonShader.setUniform('edgeStrokeWidth', AppState.cartoonStroke);
-          wpg.filter(cartoonShader);
-
-          targetImg = wpg;
-        } catch (e) {
-          console.error("Cartoon filter failed:", e);
-        }
-      }
-
       const pg = p.createGraphics(w, h);
-      pg.noSmooth(); // 禁用抗锯齿，使用临近像素插值
+      pg.noSmooth();
       pg.pixelDensity(1);
-      pg.image(targetImg, 0, 0, w, h);
+      // Mirror once at the low-resolution sampling stage so preview and exports
+      // all share the same flipped processedData without paying a high-res cost.
+      pg.push();
+      pg.translate(w, 0);
+      pg.scale(-1, 1);
+      pg.image(img, 0, 0, w, h);
+      pg.pop();
       pg.loadPixels();
 
-      // 暗部亮度微调：防止纯黑导致的立体感缺失
+      // Brighten purely black pixels
       for (let i = 0; i < pg.pixels.length; i += 4) {
-        if (pg.pixels[i + 3] > 0) { // 只处理非透明像素
+        if (pg.pixels[i + 3] > 0) {
           pg.pixels[i] = Math.max(pg.pixels[i], 35);
           pg.pixels[i + 1] = Math.max(pg.pixels[i + 1], 35);
           pg.pixels[i + 2] = Math.max(pg.pixels[i + 2], 35);
         }
       }
 
-      if (AppState.cartoonFilter && targetImg !== img && targetImg.remove) {
-        targetImg.remove();
-      }
 
       if (pg.pixels.length === 0) return;
 
-      const inPointContainer = utils.PointContainer.fromUint8Array(pg.pixels, w, h);
+      buildLUT();
 
-      // We ALWAYS quantize by building a palette or using the previous extracted palette
-      // This ensures if user edits a color in the UI, they only "override" it.
-      let palette;
-      if (AppState.isCustomColors && AppState.extractedColors && AppState.extractedColors.length > 0) {
-        palette = new utils.Palette();
-        AppState.extractedColors.forEach(c => {
-          palette.add(utils.Point.createByRGBA(c[0], c[1], c[2], 255));
-        });
-      } else {
-        palette = buildPaletteSync([inPointContainer], {
-          colors: AppState.colorCount,
-          colorDistanceFormula: 'euclidean'
-        });
-        const pointArray = palette.getPointContainer().getPointArray();
-        AppState.extractedColors = pointArray.map(pt => [pt.r, pt.g, pt.b, 255]);
-      }
+      // Faster mapping via LUT using a single closest-color lookup path for
+      // every palette, which keeps palette behavior stable and predictable.
+      const outPixels = new Uint8Array(w * h * 4);
+      for (let i = 0; i < pg.pixels.length; i += 4) {
+        if (pg.pixels[i + 3] > 128) {
+          let r = pg.pixels[i];
+          let g = pg.pixels[i + 1];
+          let b = pg.pixels[i + 2];
 
-      const outPointContainer = applyPaletteSync(inPointContainer, palette, {
-        imageQuantization: AppState.dithering ? 'floyd-steinberg' : 'nearest'
-      });
-      
-      const outPixels = outPointContainer.toUint8Array();
+          // Use multiplication to avoid signed 32-bit overflow when r >= 128
+          const pidx = colorLUT[r * 65536 + g * 256 + b];
 
-      // If this is a fresh extraction (not editing colors manually), set customColors to extractedColors
-      if (!AppState.isCustomColors) {
-         AppState.customColors = AppState.extractedColors.map(c => [...c]);
-      }
-
-      // We need to map extractedColors to customColors
-      const colorCounts = {};
-      AppState.customColors.forEach((_, i) => { colorCounts[i] = 0; });
-      
-      // Match each pixel back to the index in extracted colors
-      const findColorIndex = (r, g, b, a) => {
-         // Because outPixels are mapped perfectly to extractedColors, we just find exact match
-         for (let i = 0; i < AppState.extractedColors.length; i++) {
-           const c = AppState.extractedColors[i];
-           if (c[0] === r && c[1] === g && c[2] === b) return i;
-         }
-         return 0; // Fallback
-      };
-
-      for (let i = 0; i < outPixels.length; i += 4) {
-        if (outPixels[i + 3] > 128) {
-          const idx = findColorIndex(outPixels[i], outPixels[i + 1], outPixels[i + 2], outPixels[i + 3]);
-          colorCounts[idx]++;
-          
-          // Replace it with the custom user color
-          const mappedColor = AppState.customColors[idx];
-          outPixels[i] = mappedColor[0];
-          outPixels[i + 1] = mappedColor[1];
-          outPixels[i + 2] = mappedColor[2];
-          // Keep original alpha
+          outPixels[i] = activePalette[pidx][0];
+          outPixels[i + 1] = activePalette[pidx][1];
+          outPixels[i + 2] = activePalette[pidx][2];
+          outPixels[i + 3] = 255;
+        } else {
+          outPixels[i + 3] = 0;
         }
       }
-
-      let colorDataObjects = AppState.customColors.map((c, idx) => {
-         return {
-           rgba: c,
-           count: colorCounts[idx] || 0,
-           originalIndex: idx
-         };
-      });
-
-      // ONLY sort on fresh generation
-      if (!AppState.isCustomColors) {
-         colorDataObjects.sort((a, b) => b.count - a.count);
-         // Once sorted, we must update customColors and extractedColors to match the sorted order!
-         AppState.customColors = colorDataObjects.map(obj => obj.rgba);
-         const newExtractedColors = colorDataObjects.map(obj => AppState.extractedColors[obj.originalIndex]);
-         AppState.extractedColors = newExtractedColors;
-         
-         // Remap the data objects so their originalIndex points correctly again
-         colorDataObjects = colorDataObjects.map((obj, i) => ({...obj, originalIndex: i}));
-      }
-
-      updatePaletteUI(colorDataObjects);
 
       processedData = {
         width: w,
@@ -499,20 +391,20 @@ export function setupP5() {
 
       const { cols, rows, pixels } = processedData;
 
-      // Base cell size computation to fit the screen
-      const fitW = p.width * 0.7;
-      const fitH = p.height * 0.8;
-      const baseCellSize = Math.min(fitW / cols, fitH / rows, 40);
+      // Base cell size computation to fit the screen (cover mode)
+      const fitW = p.width;
+      const fitH = p.height;
+      const baseCellSize = Math.max(fitW / cols, fitH / rows);
 
-      // Apply zoom slider
-      const cellSize = baseCellSize * AppState.zoomScale;
+      // Apply scale
+      const cellSize = baseCellSize;
 
       const totalW = cols * cellSize;
       const totalH = rows * cellSize;
 
-      // Start centered + pan offsets
-      const startX = (p.width - totalW) / 2 + offsetX;
-      const startY = (p.height - totalH) / 2 + offsetY;
+      // Start centered
+      const startX = (p.width - totalW) / 2;
+      const startY = (p.height - totalH) / 2;
 
       // Draw infinite grid aligning with cells
       if (cellSize > 4) {
@@ -552,7 +444,7 @@ export function setupP5() {
       const maxVisibleX = Math.ceil((p.width - startX) / cellSize) + 1;
       const minVisibleY = Math.floor(-startY / cellSize) - 1;
       const maxVisibleY = Math.ceil((p.height - startY) / cellSize) + 1;
-      
+
       const startRow = Math.max(0, minVisibleY);
       const endRow = Math.min(rows, maxVisibleY);
       const startCol = Math.max(0, minVisibleX);
@@ -622,91 +514,7 @@ export function setupP5() {
       }
       p.pop();
 
-      // --- Rulers System ---
-      const rulerSize = 24;
-      p.push();
-      p.noStroke();
-      p.fill(250); // General ruler background
-      p.rect(0, 0, p.width, rulerSize);
-      p.rect(0, 0, rulerSize, p.height);
 
-      // Ruler highlight matching content bounds
-      p.fill(234, 244, 246); // Highlight colour (Figma-like light blue-grey)
-      const hlXEdge = Math.max(rulerSize, startX);
-      const hlXEnd = Math.min(p.width, startX + totalW);
-      if (hlXEnd > hlXEdge) {
-        p.rect(hlXEdge, 0, hlXEnd - hlXEdge, rulerSize);
-      }
-      const hlYEdge = Math.max(rulerSize, startY);
-      const hlYEnd = Math.min(p.height, startY + totalH);
-      if (hlYEnd > hlYEdge) {
-        p.rect(0, hlYEdge, rulerSize, hlYEnd - hlYEdge);
-      }
-
-      // Top-Left corner block
-      p.fill(250);
-      p.rect(0, 0, rulerSize, rulerSize);
-      p.stroke(230);
-      p.strokeWeight(1);
-      p.line(0, rulerSize, p.width, rulerSize);
-      p.line(rulerSize, 0, rulerSize, p.height);
-
-      // Ticks and Text
-      p.fill(180);
-      p.stroke(230);
-      p.strokeWeight(1);
-      p.textSize(10);
-      p.textAlign(p.LEFT, p.TOP);
-
-      // Calculate reasonable number steps
-      let stepUnit = Math.max(1, Math.ceil(40 / cellSize));
-      const m10 = Math.pow(10, Math.floor(Math.log10(stepUnit)));
-      const base = stepUnit / m10;
-      if (base > 5) stepUnit = 10 * m10;
-      else if (base > 2) stepUnit = 5 * m10;
-      else if (base > 1) stepUnit = 2 * m10;
-      else stepUnit = 1 * m10;
-
-      // Top Ruler ticks
-      const startValX = Math.floor((rulerSize - startX) / cellSize);
-      const endValX = Math.ceil((p.width - startX) / cellSize);
-      for (let v = startValX; v <= endValX; v++) {
-        const px = startX + v * cellSize;
-        if (px < rulerSize) continue;
-        if (v % stepUnit === 0) {
-          p.line(px, rulerSize - 8, px, rulerSize);
-          p.push();
-          p.noStroke();
-          p.text(v, px + 3, 2);
-          p.pop();
-        } else if (v % (stepUnit / 2) === 0 || stepUnit < 5) {
-          p.line(px, rulerSize - 5, px, rulerSize);
-        } else if (cellSize > 10) {
-          p.line(px, rulerSize - 3, px, rulerSize);
-        }
-      }
-
-      // Left Ruler ticks
-      const startValY = Math.floor((rulerSize - startY) / cellSize);
-      const endValY = Math.ceil((p.height - startY) / cellSize);
-      for (let v = startValY; v <= endValY; v++) {
-        const py = startY + v * cellSize;
-        if (py < rulerSize) continue;
-        if (v % stepUnit === 0) {
-          p.line(rulerSize - 8, py, rulerSize, py);
-          p.push();
-          p.translate(rulerSize - 12, py + 3);
-          p.rotate(-p.HALF_PI);
-          p.noStroke();
-          p.text(v, 0, 0);
-          p.pop();
-        } else if (v % (stepUnit / 2) === 0 || stepUnit < 5) {
-          p.line(rulerSize - 5, py, rulerSize, py);
-        } else if (cellSize > 10) {
-          p.line(rulerSize - 3, py, rulerSize, py);
-        }
-      }
-      p.pop();
     };
 
     function exportManualSVG(showToast) {
@@ -730,8 +538,8 @@ export function setupP5() {
       const darkenSVG = (v, f) => Math.max(0, Math.round(v * f));
       const strokeWSVG = AppState.bevelSize > 0 ? Math.max(0.5, beadSize * (AppState.bevelSize / 100)) : 0;
 
-      // One gradient def per palette colour
-      const palette = AppState.customColors || [];
+      // Use currently active palette for SVG export
+      const palette = activePalette;
       const colorToId = {};
       const defLines = [];
       palette.forEach((col, i) => {

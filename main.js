@@ -1,8 +1,6 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
-import { setupP5, AppState } from './p5setup.js';
-import Pickr from '@simonwep/pickr';
-import '@simonwep/pickr/dist/themes/monolith.min.css';
+import { setupP5, AppState, PALETTES, switchPalette } from './p5setup.js';
 
 // Setup PWA
 const updateSW = registerSW({
@@ -26,19 +24,24 @@ window.addEventListener('load', () => {
   }
 });
 
+// --- Keyboard Shortcuts (registered at top level to avoid focus conflicts and HMR bugs) ---
+// By placing this outside the 'load' event, we guarantee it attaches even during Vite hot-reloads.
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyA' || e.key.toLowerCase() === 'a') {
+    const panel = document.getElementById('ui-panel');
+    if (panel) {
+      e.preventDefault(); // prevent 'a' from moving a focused range slider
+      panel.classList.toggle('hide-panel');
+    }
+  }
+}, { capture: true });
+
 // =============================================
 // Desktop UI Setup (also used by mobile)
 // =============================================
 function setupUI() {
-  const uploadInput = document.getElementById('image-upload');
   const resInput = document.getElementById('resolution');
   const resVal = document.getElementById('resolution-val');
-  const colorRadios = document.getElementsByName('colors');
-  const ditherCb = document.getElementById('dithering');
-  const cartoonCb = document.getElementById('cartoon-filter');
-  const cartoonOptions = document.getElementById('cartoon-options');
-  const cartoonStroke = document.getElementById('cartoon-stroke');
-  const cartoonStrokeVal = document.getElementById('cartoon-stroke-val');
   
   const borderInput = document.getElementById('border-radius');
   const borderVal = document.getElementById('border-radius-val');
@@ -53,15 +56,6 @@ function setupUI() {
   
   const pngBtn = document.getElementById('export-png-btn');
   const svgBtn = document.getElementById('export-svg-btn');
-
-  uploadInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      if (isMobile()) showLoading();
-      AppState.loadImage(url);
-    }
-  });
 
   // On mobile, use 'change' (fire on release) instead of 'input' (fire on drag)
   const sliderEvent = isMobile() ? 'change' : 'input';
@@ -85,41 +79,10 @@ function setupUI() {
     }, 500);
   });
 
-  colorRadios.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        if (e.target.value === 'custom') {
-          AppState.isCustomColors = true;
-        } else {
-          AppState.isCustomColors = false;
-          AppState.colorCount = parseInt(e.target.value);
-        }
-        requestUpdate();
-      }
-    });
-  });
-
-  ditherCb.addEventListener('change', (e) => {
-    AppState.dithering = e.target.checked;
-    requestUpdate();
-  });
-
-  cartoonCb.addEventListener('change', (e) => {
-    AppState.cartoonFilter = e.target.checked;
-    cartoonOptions.style.display = e.target.checked ? 'block' : 'none';
-    requestUpdate();
-  });
-
   borderInput.addEventListener(sliderEvent, (e) => {
     AppState.perlerRadius = parseInt(e.target.value);
     borderVal.textContent = AppState.perlerRadius + '%';
     requestRedraw();
-  });
-
-  cartoonStroke.addEventListener(sliderEvent, (e) => {
-    AppState.cartoonStroke = parseFloat(e.target.value);
-    cartoonStrokeVal.textContent = AppState.cartoonStroke;
-    requestUpdate();
   });
 
   bevelInput.addEventListener(sliderEvent, (e) => {
@@ -148,21 +111,54 @@ function setupUI() {
     if(AppState.exportSVG) AppState.exportSVG(showToast);
   });
 
-  // Clipboard paste: support pasting image directly into canvas
-  window.addEventListener('paste', (e) => {
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          const url = URL.createObjectURL(file);
-          AppState.loadImage(url);
-          showToast('图片已从剪贴板导入');
-        }
-        break;
-      }
-    }
+  // --- Palette Preset Switcher ---
+  setupPalettePresets();
+
+}
+
+function setupPalettePresets() {
+  const grid = document.getElementById('palette-preset-grid');
+  if (!grid) return;
+
+  // Clear existing buttons to prevent duplication during Hot Module Replacement (HMR)
+  grid.innerHTML = '';
+
+  let activeKey = 'field';
+
+  Object.entries(PALETTES).forEach(([key, preset]) => {
+    const btn = document.createElement('button');
+    btn.className = 'palette-preset-btn' + (key === activeKey ? ' active' : '');
+    btn.dataset.key = key;
+    btn.title = preset.name;
+
+    // Show all colors as mini swatches
+    const swatchRow = document.createElement('div');
+    swatchRow.className = 'palette-preset-swatches';
+    preset.colors.forEach(([r, g, b]) => {
+      const dot = document.createElement('span');
+      dot.className = 'palette-preset-dot';
+      dot.style.background = `rgb(${r},${g},${b})`;
+      swatchRow.appendChild(dot);
+    });
+
+    const nameLabel = document.createElement('span');
+    nameLabel.className = 'palette-preset-name';
+    nameLabel.textContent = preset.name;
+
+    btn.appendChild(swatchRow);
+    btn.appendChild(nameLabel);
+    grid.appendChild(btn);
+
+    btn.addEventListener('click', () => {
+      if (key === activeKey) return;
+      activeKey = key;
+      // Update active state visually
+      grid.querySelectorAll('.palette-preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Switch palette and rebuild LUT
+      switchPalette(key);
+      showToast(`已切换：${preset.name}`);
+    });
   });
 }
 
@@ -179,23 +175,15 @@ function setupMobile() {
   // --- Move controls from desktop panel into mobile sheet panels ---
   const panels = {
     import: sheet.querySelector('[data-panel="import"]'),
-    color: sheet.querySelector('[data-panel="color"]'),
+
     style: sheet.querySelector('[data-panel="style"]'),
     export: sheet.querySelector('[data-panel="export"]'),
   };
 
-  // Import panel: upload + resolution + cartoon filter
+  // Import panel: resolution + palette preset
   moveChildren(uiPanel, panels.import, [
-    '[data-mobile-group="import-upload"]',
     '[data-mobile-group="import-resolution"]',
-    '[data-mobile-group="import-cartoon"]',
-    '#cartoon-options',
-  ]);
-
-  // Color panel: color count + palette + dithering
-  moveChildren(uiPanel, panels.color, [
-    '[data-mobile-group="color-count"]',
-    '[data-mobile-group="color-dither"]',
+    '[data-mobile-group="palette-preset"]',
   ]);
 
   // Style panel: perler style controls
@@ -333,155 +321,4 @@ function requestRedraw() {
   if (AppState.triggerRedraw) {
     AppState.triggerRedraw();
   }
-}
-
-let pickrInstances = [];
-
-// Manually position a pcr-app element relative to an anchor element
-function positionPickrNearSwatch(swatch, appEl) {
-  if (isMobile()) {
-    // On mobile, CSS handles centering via fixed position + transform
-    return;
-  }
-  const rect = swatch.getBoundingClientRect();
-  const appW = appEl.offsetWidth || 250;
-  const appH = appEl.offsetHeight || 300;
-  const gap = 10;
-
-  // Prefer left of the swatch (towards the canvas)
-  let left = rect.left - appW - gap;
-  let top = rect.top;
-
-  // Fallback: right if no space on left
-  if (left < 8) {
-    left = rect.right + gap;
-  }
-
-  // Clamp vertically
-  if (top + appH > window.innerHeight - 8) {
-    top = window.innerHeight - appH - 8;
-  }
-  if (top < 8) top = 8;
-
-  appEl.style.left = left + 'px';
-  appEl.style.top = top + 'px';
-}
-
-export function updatePaletteUI(colorDataObjArray) {
-  const container = document.getElementById('palette-container');
-  container.innerHTML = '';
-  if (colorDataObjArray.length === 0) {
-    container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.8rem;">尚未提取</span>';
-  }
-  
-  // Destroy all existing instances and clean up anchors
-  pickrInstances.forEach(({ pickr, anchor }) => {
-    pickr.destroyAndRemove();
-    if (anchor && anchor.parentNode) anchor.parentNode.removeChild(anchor);
-  });
-  pickrInstances = [];
-
-  // Helper to convert rgb to hex string
-  const rgbaToHex = (r, g, b) => {
-    return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
-  };
-  
-  // Helper to convert hex string to rgb
-  const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [
-      parseInt(result[1], 16),
-      parseInt(result[2], 16),
-      parseInt(result[3], 16),
-      255
-    ] : null;
-  };
-
-  colorDataObjArray.forEach((dataObj, index) => {
-    const col = dataObj.rgba;
-    const count = dataObj.count;
-    const originalIndex = index;
-    
-    // List item wrapper
-    const listItem = document.createElement('div');
-    listItem.className = 'palette-list-item';
-    
-    // Swatch
-    const swatch = document.createElement('div');
-    swatch.className = 'color-swatch';
-    swatch.style.backgroundColor = `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`;
-    
-    // HEX Input
-    const hexInput = document.createElement('input');
-    hexInput.type = 'text';
-    hexInput.className = 'color-hex-input';
-    hexInput.value = rgbaToHex(col[0], col[1], col[2]);
-    hexInput.addEventListener('change', (e) => {
-      const newRgba = hexToRgb(e.target.value.trim());
-      if (newRgba && AppState.updateCustomColor) {
-        AppState.updateCustomColor(originalIndex, newRgba);
-      } else {
-        e.target.value = rgbaToHex(col[0], col[1], col[2]); // Revert on invalid
-      }
-    });
-    
-    // Count label
-    const countLabel = document.createElement('div');
-    countLabel.className = 'color-count-label';
-    countLabel.textContent = `x${count}`;
-    
-    listItem.appendChild(swatch);
-    listItem.appendChild(hexInput);
-    listItem.appendChild(countLabel);
-    container.appendChild(listItem);
-
-    // Use a 1px invisible anchor in body — this gives nanopop a real DOM reference
-    // but we override its calculated position ourselves on show
-    const anchor = document.createElement('div');
-    anchor.style.cssText = 'position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;pointer-events:none;opacity:0;';
-    document.body.appendChild(anchor);
-
-    const pickr = Pickr.create({
-      el: anchor,
-      theme: 'monolith',
-      default: `rgba(${col[0]}, ${col[1]}, ${col[2]}, ${col[3] / 255})`,
-      defaultRepresentation: 'HEX',
-      swatches: null,
-      components: {
-        preview: true,
-        opacity: false,
-        hue: true,
-        interaction: {
-          hex: true,
-          rgba: true,
-          hsla: false,
-          hsva: false,
-          cmyk: false,
-          input: true,
-          clear: false,
-          save: true
-        }
-      }
-    });
-
-    // Click the swatch → show pickr and manually position it
-    swatch.addEventListener('click', () => {
-      pickr.show();
-      const appEl = pickr.getRoot().app;
-      // First frame: browser has rendered, offsetWidth/Height are valid
-      requestAnimationFrame(() => {
-        positionPickrNearSwatch(swatch, appEl);
-      });
-    });
-
-    pickr.on('save', (color, instance) => {
-      const rgba = color.toRGBA();
-      if (AppState.updateCustomColor) {
-        AppState.updateCustomColor(originalIndex, [rgba[0], rgba[1], rgba[2], rgba[3] * 255]);
-      }
-      instance.hide();
-    });
-
-    pickrInstances.push({ pickr, anchor });
-  });
 }

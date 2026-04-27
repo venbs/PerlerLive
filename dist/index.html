@@ -1,96 +1,113 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/PerlerStudio/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>PerlerStudio</title>
-    <meta name="theme-color" content="#ffffff">
-    <script type="module" crossorigin src="/PerlerStudio/assets/index-C_vJKr3I.js"></script>
-    <link rel="stylesheet" crossorigin href="/PerlerStudio/assets/index-lUPo3B5U.css">
-  <link rel="manifest" href="/PerlerStudio/manifest.webmanifest"></head>
-  <body>
-    <!-- P5.js Canvas Container -->
-    <div id="canvas-container"></div>
 
-    <!-- Floating UI Panel -->
-    <div id="ui-panel">
-      <!-- Logo -->
-      <div class="logo">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/PerlerStudio/favicon.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>PerlerStudio</title>
+  <meta name="theme-color" content="#ffffff">
+  <script type="module" crossorigin src="/PerlerStudio/assets/index-CTl_yu7d.js"></script>
+  <link rel="stylesheet" crossorigin href="/PerlerStudio/assets/index-yeSqhFWz.css">
+<link rel="manifest" href="/PerlerStudio/manifest.webmanifest"></head>
+
+<body>
+  <!-- P5.js Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading overlay for mobile -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <span>处理中…</span>
+  </div>
+
+  <!-- Desktop Floating UI Panel -->
+  <div id="ui-panel">
+    <!-- Logo -->
+    <div class="logo">
+      <a href="https://github.com/venbs/PerlerStudio" target="_blank" rel="noopener noreferrer">
         <img src="/PerlerStudio/assets/PerlerStudio-1EkPRKPy.svg" alt="PerlerStudio Logo" />
-      </div>
-
-      <!-- Controls -->
-      <div class="control-group">
-        <label for="image-upload" class="upload-btn">
-          导入图片
-        </label>
-        <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" style="display: none;" />
-      </div>
-
-      <div class="control-group">
-        <label>分辨率 <span class="val" id="resolution-val">64px</span></label>
-        <input type="range" id="resolution" min="16" max="256" value="64" step="8" />
-      </div>
-
-      <div class="control-group inline">
-        <label>描边滤镜</label>
-        <label class="switch">
-          <input type="checkbox" id="cartoon-filter" />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <div class="control-group">
-        <label>颜色数量</label>
-        <div class="radio-group" id="color-count-group">
-          <label><input type="radio" name="colors" value="4">4</label>
-          <label><input type="radio" name="colors" value="8">8</label>
-          <label><input type="radio" name="colors" value="16" checked>16</label>
-          <label><input type="radio" name="colors" value="32">32</label>
-          <label><input type="radio" name="colors" value="custom">自定义</label>
-        </div>
-        <div id="palette-container" class="palette-container">
-          <!-- Swatches dynamically generated here -->
-        </div>
-      </div>
-
-      <div class="control-group inline">
-        <label>平滑抖动</label>
-        <label class="switch">
-          <input type="checkbox" id="dithering" />
-          <span class="slider"></span>
-        </label>
-      </div>
-
-      <div class="control-group">
-        <label>拼豆样式</label>
-        <div class="style-row">
-          <label>圆角 <span class="val" id="border-radius-val">50%</span></label>
-          <input type="range" id="border-radius" min="0" max="100" value="50" />
-        </div>
-        <div class="style-row">
-          <label>厚度 <span class="val" id="bevel-size-val">10%</span></label>
-          <input type="range" id="bevel-size" min="0" max="20" value="10" step="1" />
-        </div>
-        <div class="style-row">
-          <label>间隔 <span class="val" id="gap-size-val">1px</span></label>
-          <input type="range" id="gap-size" min="0.5" max="3" value="1" step="0.5" />
-        </div>
-        <div class="style-row">
-          <label>豆心 <span class="val" id="hole-size-val">20%</span></label>
-          <input type="range" id="hole-size" min="0" max="50" value="20" step="1" />
-        </div>
-      </div>
-
-      <div class="export-group">
-        <button id="export-png-btn">导出 PNG</button>
-        <button id="export-svg-btn">导出 SVG</button>
-      </div>
-
-      <!-- Version label -->
-      <div class="version-label">v0.1.0</div>
+      </a>
     </div>
-    
-  </body>
+
+    <!-- Controls -->
+    <div class="control-group inline" data-mobile-group="import-resolution">
+      <label>分辨率</label>
+      <input type="number" id="resolution" min="16" max="128" value="64" />
+    </div>
+
+
+
+    <!-- Palette Preset Switcher -->
+    <div class="control-group" data-mobile-group="palette-preset">
+      <label>色板风格</label>
+      <div class="palette-preset-grid" id="palette-preset-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+
+
+    <div class="control-group" data-mobile-group="style-controls">
+      <label>拼豆样式</label>
+      <div class="style-row">
+        <label>圆角 <span class="val" id="border-radius-val">50%</span></label>
+        <input type="range" id="border-radius" min="0" max="100" value="50" />
+      </div>
+      <div class="style-row">
+        <label>厚度 <span class="val" id="bevel-size-val">5%</span></label>
+        <input type="range" id="bevel-size" min="0" max="20" value="5" step="1" />
+      </div>
+      <div class="style-row">
+        <label>间隔 <span class="val" id="gap-size-val">1px</span></label>
+        <input type="range" id="gap-size" min="0.5" max="3" value="1" step="0.5" />
+      </div>
+      <div class="style-row">
+        <label>豆心 <span class="val" id="hole-size-val">40%</span></label>
+        <input type="range" id="hole-size" min="0" max="60" value="40" step="1" />
+      </div>
+    </div>
+
+    <div class="export-group" data-mobile-group="export-buttons">
+      <button id="export-png-btn">导出 PNG</button>
+      <button id="export-svg-btn">复制 SVG</button>
+    </div>
+
+    <!-- Version label -->
+    <div class="version-label">v0.3.0</div>
+  </div>
+
+  <!-- Mobile Bottom Sheet -->
+  <div id="mobile-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-content">
+      <!-- Panels are populated by JS moving desktop controls here -->
+      <div class="sheet-panel" data-panel="import"></div>
+
+      <div class="sheet-panel" data-panel="style"></div>
+      <div class="sheet-panel" data-panel="export"></div>
+    </div>
+  </div>
+
+  <!-- Mobile Tab Bar -->
+  <nav id="mobile-tab-bar">
+    <button class="tab-btn" data-tab="import">
+      <span class="tab-icon">📷</span>
+      <span class="tab-label">导入</span>
+    </button>
+
+    <button class="tab-btn" data-tab="style">
+      <span class="tab-icon">✨</span>
+      <span class="tab-label">样式</span>
+    </button>
+    <button class="tab-btn" data-tab="export">
+      <span class="tab-icon">⬇️</span>
+      <span class="tab-label">导出</span>
+    </button>
+  </nav>
+
+  <div id="toast"></div>
+</body>
+
 </html>

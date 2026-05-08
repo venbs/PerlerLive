@@ -2,13 +2,13 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/PerlerStudio/',
+  base: '/PerlerLive/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'PerlerStudio 拼豆工作室',
-        short_name: 'PerlerStudio',
+        name: 'PerlerLive 拼豆实时滤镜',
+        short_name: 'PerlerLive',
         description: '基于P5.js的拼豆设计与创作工具',
         theme_color: '#ffffff',
         background_color: '#f8f9fa',

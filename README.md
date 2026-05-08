@@ -1,21 +1,21 @@
 <div align="center">
-  <img src="src/assets/PerlerStudio.svg" width="240" alt="PerlerStudio Logo" />
-  <h1>PerlerStudio (拼豆工作室)</h1>
+  <img src="src/assets/PerlerLive.svg" width="240" alt="PerlerLive Logo" />
+  <h1>PerlerLive (拼豆实时滤镜)</h1>
   <p>一个简单好用的拼豆像素画设计与导出工具</p>
 
   <p>
-    <a href="https://venbs.github.io/PerlerStudio/"><strong>👉 立即在线使用</strong></a>
+    <a href="https://perlerlab.github.io/PerlerLive/"><strong>👉 立即在线使用</strong></a>
   </p>
 
-  [ ![Version](https://img.shields.io/badge/version-0.2.0-blue.svg) ](https://github.com/venbs/PerlerStudio)
-  [ ![PWA](https://img.shields.io/badge/PWA-支持离线-orange.svg) ](https://venbs.github.io/PerlerStudio/)
+  [ ![Version](https://img.shields.io/badge/version-0.2.0-blue.svg) ](https://github.com/perlerlab/PerlerLive)
+  [ ![PWA](https://img.shields.io/badge/PWA-支持离线-orange.svg) ](https://perlerlab.github.io/PerlerLive/)
 </div>
 
 ---
 
 ## 🧐 这是什么？
 
-**PerlerStudio** 是一个纯网页端的工具，专门帮拼豆爱好者把喜欢的图片转成拼豆图纸。它不仅能像素化图片，还能模拟豆子特有的圆角和中心孔洞，并加上一点立体光影效果，让你在动手制作前就能直观看到成品长什么样。
+**PerlerLive** 是一个纯网页端的工具，专门把实时摄像头画面转换成拼豆风格图像，并输出适合互动展示和导出的结果。它会对画面进行像素化、色板映射，并模拟豆子特有的圆角、中心孔洞和立体光影效果。
 
 ## ✨ 有哪些好用的功能？
 

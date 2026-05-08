@@ -123,7 +123,7 @@ function setupPalettePresets() {
   // Clear existing buttons to prevent duplication during Hot Module Replacement (HMR)
   grid.innerHTML = '';
 
-  let activeKey = 'field';
+  let activeKey = 'underwater';
 
   Object.entries(PALETTES).forEach(([key, preset]) => {
     const btn = document.createElement('button');

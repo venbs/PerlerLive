@@ -175,8 +175,8 @@ export const PALETTES = {
 // =============================================
 // Active Palette & LUT
 // =============================================
-let activePaletteKey = 'field';
-let activePalette = PALETTES.field.colors;
+let activePaletteKey = 'underwater';
+let activePalette = PALETTES.underwater.colors;
 
 // LUT: maps every RGB → index into activePalette (16 MB Uint8Array)
 const colorLUT = new Uint8Array(16777216); // 256^3
@@ -226,8 +226,8 @@ export const AppState = {
   videoCapture: null,
   resolution: 64,
   perlerRadius: 50,
-  perlerGap: 1, // Absolute gap size 0.5-3px
-  bevelSize: 5, // Bevel stroke thickness 0-20%
+  perlerGap: 0.5, // Absolute gap size 0-3px
+  bevelSize: 10, // Bevel stroke thickness 0-20%
   holeSize: 40, // Percentage 0-60
   triggerUpdate: null,
   triggerRedraw: null,
@@ -259,7 +259,7 @@ export function setupP5() {
       p.noLoop(); // We only redraw on changes
 
       AppState.exportPNG = () => {
-        p.saveCanvas('perler_studio', 'png');
+        p.saveCanvas('perler_live', 'png');
       };
 
       AppState.exportSVG = exportManualSVG;

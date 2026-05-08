@@ -7,7 +7,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'PerlerLive 拼豆实时滤镜',
+        name: 'PerlerLive',
         short_name: 'PerlerLive',
         description: '基于P5.js的拼豆设计与创作工具',
         theme_color: '#ffffff',

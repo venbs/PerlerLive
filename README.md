@@ -1,14 +1,10 @@
 <div align="center">
   <img src="src/assets/PerlerLive.svg" width="240" alt="PerlerLive Logo" />
-  <h1>PerlerLive (拼豆实时滤镜)</h1>
+  <h1>PerlerLive</h1>
   <p>一个简单好用的拼豆像素画设计与导出工具</p>
 
-  <p>
-    <a href="https://perlerlab.github.io/PerlerLive/"><strong>👉 立即在线使用</strong></a>
-  </p>
-
-  [ ![Version](https://img.shields.io/badge/version-0.2.0-blue.svg) ](https://github.com/perlerlab/PerlerLive)
-  [ ![PWA](https://img.shields.io/badge/PWA-支持离线-orange.svg) ](https://perlerlab.github.io/PerlerLive/)
+  ![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
+  ![PWA](https://img.shields.io/badge/PWA-支持离线-orange.svg)
 </div>
 
 ---

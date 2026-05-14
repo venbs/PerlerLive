@@ -35,6 +35,8 @@ window.addEventListener('load', () => {
   if (isMobile()) {
     setupMobile();
   }
+  // Start preloading the gesture model in the background
+  preloadGestureModel();
 });
 
 window.addEventListener('beforeunload', () => {
@@ -320,6 +322,30 @@ function setupGestureController() {
       gestureToggleInput.disabled = false;
     }
   });
+}
+
+/**
+ * Preload gesture model in background on page load.
+ * Shows spinner → toggle swap when ready, or error on failure.
+ */
+async function preloadGestureModel() {
+  if (!gestureController) return;
+
+  const loadingEl = document.getElementById('gesture-loading');
+  const toggleWrapper = document.getElementById('gesture-toggle-wrapper');
+
+  try {
+    await gestureController.preload();
+    // Preload succeeded — swap spinner for toggle
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (toggleWrapper) toggleWrapper.classList.remove('gesture-toggle-hidden');
+  } catch (error) {
+    console.error('[gesture] preload failed:', error);
+    // Show error text in place of spinner
+    if (loadingEl) {
+      loadingEl.innerHTML = '<span class="gesture-loading-failed">加载失败</span>';
+    }
+  }
 }
 
 function syncGestureSettingsVisibility(visible) {

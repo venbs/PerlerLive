@@ -51,6 +51,14 @@ class GestureController {
     this.scheduleNextTick(0);
   }
 
+  /**
+   * Preload the worker and model without starting detection.
+   * Resolves when the worker reports 'ready'.
+   */
+  async preload() {
+    await this.ensureWorker();
+  }
+
   disable() {
     this.enabled = false;
     this.stopLoop();

@@ -45,7 +45,12 @@
 
     <div class="control-group inline" data-mobile-group="gesture-control">
       <label for="gesture-toggle">挥手切换</label>
-      <label class="toggle-switch" for="gesture-toggle">
+      <!-- Loading spinner shown while model preloads -->
+      <div class="gesture-loading" id="gesture-loading">
+        <div class="gesture-loading-spinner"></div>
+      </div>
+      <!-- Toggle hidden until model is ready -->
+      <label class="toggle-switch gesture-toggle-hidden" id="gesture-toggle-wrapper" for="gesture-toggle">
         <input type="checkbox" id="gesture-toggle" />
         <span class="toggle-slider"></span>
       </label>

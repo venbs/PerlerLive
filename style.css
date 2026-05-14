@@ -399,6 +399,34 @@ input[type="number"]:focus {
   display: none;
 }
 
+/* Gesture model preload spinner (replaces toggle until ready) */
+.gesture-toggle-hidden {
+  display: none !important;
+}
+
+.gesture-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 24px;
+}
+
+.gesture-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.gesture-loading-failed {
+  font-size: 11px;
+  color: #cc3333;
+  white-space: nowrap;
+}
+
 /* Palette Preset Switcher */
 .palette-preset-grid {
   display: flex;

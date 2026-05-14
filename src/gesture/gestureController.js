@@ -78,6 +78,7 @@ class GestureController {
     if (this.worker && this.workerReady) return;
     if (this.initPromise) return this.initPromise;
 
+    console.log('[gesture] creating worker…');
     this.worker = new Worker(new URL('./handGestureWorker.js', import.meta.url), {
       type: 'module',
     });
@@ -87,8 +88,15 @@ class GestureController {
     this.initPromise = new Promise((resolve, reject) => {
       this.resolveInit = resolve;
       this.rejectInit = reject;
+
+      // Timeout: reject if worker doesn't respond within 30 s
+      this.initTimer = setTimeout(() => {
+        reject(new Error('手势模型加载超时（30s）'));
+        this.clearInitHooks();
+      }, 30000);
     });
 
+    console.log('[gesture] sending init, wasmRoot =', this.wasmRoot);
     this.worker.postMessage({
       type: 'init',
       modelAssetPath: this.modelAssetPath,
@@ -151,6 +159,10 @@ class GestureController {
     this.resolveInit = null;
     this.rejectInit = null;
     this.initPromise = null;
+    if (this.initTimer) {
+      clearTimeout(this.initTimer);
+      this.initTimer = null;
+    }
   }
 
   stopLoop() {

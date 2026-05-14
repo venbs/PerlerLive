@@ -29,7 +29,9 @@ async function initHandLandmarker({ wasmRoot, modelAssetPath }) {
   }
 
   try {
+    console.log('[gesture-worker] loading vision fileset from', wasmRoot);
     const vision = await FilesetResolver.forVisionTasks(wasmRoot, true);
+    console.log('[gesture-worker] fileset loaded, creating HandLandmarker…');
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath },
       runningMode: 'VIDEO',
@@ -39,8 +41,10 @@ async function initHandLandmarker({ wasmRoot, modelAssetPath }) {
       minTrackingConfidence: 0.5,
     });
     initialized = true;
+    console.log('[gesture-worker] ready');
     self.postMessage({ type: 'ready' });
   } catch (error) {
+    console.error('[gesture-worker] init failed:', error);
     postError('手势识别初始化失败', true, error);
   }
 }

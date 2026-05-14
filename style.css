@@ -68,6 +68,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .hide-panel {
@@ -75,14 +78,40 @@ body {
   pointer-events: none;
 }
 
-/* Scrollbar */
-#ui-panel::-webkit-scrollbar {
-  width: 4px;
+.is-hidden {
+  display: none !important;
 }
 
-#ui-panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
+/* Scrollbar */
+#ui-panel::-webkit-scrollbar,
+.sheet-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+#ui-panel::-webkit-scrollbar-track,
+.sheet-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-polish,
+#ui-panel,
+.sheet-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 17, 17, 0.18) transparent;
+}
+
+#ui-panel::-webkit-scrollbar-thumb,
+.sheet-content::-webkit-scrollbar-thumb {
+  background: rgba(17, 17, 17, 0.18);
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+}
+
+#ui-panel::-webkit-scrollbar-thumb:hover,
+.sheet-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 17, 17, 0.28);
+  background-clip: padding-box;
 }
 
 .logo {
@@ -314,19 +343,76 @@ input[type="number"]:focus {
   color: var(--text-secondary);
 }
 
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 44px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+  transform: translateX(16px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gesture-settings-group.is-collapsed {
+  display: none;
+}
+
 /* Palette Preset Switcher */
 .palette-preset-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .palette-preset-btn {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
   background: rgba(0, 0, 0, 0.03);
   border: 1.5px solid transparent;
   border-radius: 8px;
@@ -334,8 +420,7 @@ input[type="number"]:focus {
   transition: all 0.2s;
   font-family: var(--font-family);
   text-align: left;
-  min-height: 70px;
-  justify-content: space-between;
+  min-height: 0;
 }
 
 .palette-preset-btn:hover {
@@ -354,26 +439,30 @@ input[type="number"]:focus {
 
 .palette-preset-swatches {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 3px;
-  max-width: 100%;
+  max-width: 134px;
+  overflow: hidden;
+  justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .palette-preset-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
 .palette-preset-name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
   line-height: 1;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .palette-preset-btn.active .palette-preset-name {

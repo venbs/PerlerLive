@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globIgnores: ['**/mediapipe/**'],
+      },
       manifest: {
         name: 'PerlerLive',
         short_name: 'PerlerLive',

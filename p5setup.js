@@ -172,11 +172,14 @@ export const PALETTES = {
   }
 };
 
+export const PALETTE_KEYS = Object.keys(PALETTES);
+const DEFAULT_PALETTE_KEY = 'underwater';
+
 // =============================================
 // Active Palette & LUT
 // =============================================
-let activePaletteKey = 'underwater';
-let activePalette = PALETTES.underwater.colors;
+let activePaletteKey = DEFAULT_PALETTE_KEY;
+let activePalette = PALETTES[DEFAULT_PALETTE_KEY].colors;
 
 // LUT: maps every RGB → index into activePalette (16 MB Uint8Array)
 const colorLUT = new Uint8Array(16777216); // 256^3
@@ -214,11 +217,30 @@ function buildLUT() {
   isLUTBuilt = true;
 }
 
-export function switchPalette(key) {
-  if (!PALETTES[key] || key === activePaletteKey) return;
+export function switchPalette(key, source = 'ui') {
+  if (!PALETTES[key] || key === activePaletteKey) return false;
   activePaletteKey = key;
   activePalette = PALETTES[key].colors;
   isLUTBuilt = false; // Force LUT rebuild on next frame
+  AppState.currentPaletteKey = key;
+  AppState.currentPaletteIndex = PALETTE_KEYS.indexOf(key);
+  if (typeof AppState.onPaletteChange === 'function') {
+    AppState.onPaletteChange({
+      key,
+      index: AppState.currentPaletteIndex,
+      preset: PALETTES[key],
+      source,
+    });
+  }
+  return true;
+}
+
+export function getCurrentPaletteKey() {
+  return activePaletteKey;
+}
+
+export function getCurrentPaletteIndex() {
+  return PALETTE_KEYS.indexOf(activePaletteKey);
 }
 
 // Global state
@@ -232,7 +254,16 @@ export const AppState = {
   triggerUpdate: null,
   triggerRedraw: null,
   exportPNG: null,
-  exportSVG: null
+  exportSVG: null,
+  gestureEnabled: false,
+  gestureSampleFps: 15,
+  gestureMinHorizontalTravel: 0.12,
+  gestureMaxVerticalRatio: 0.45,
+  gestureDirectionDominance: 0.55,
+  gestureCooldownMs: 900,
+  currentPaletteKey: DEFAULT_PALETTE_KEY,
+  currentPaletteIndex: PALETTE_KEYS.indexOf(DEFAULT_PALETTE_KEY),
+  onPaletteChange: null,
 };
 
 const isMobile = () => window.innerWidth <= 768;

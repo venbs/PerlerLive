@@ -326,7 +326,7 @@ function setupGestureController() {
 
 /**
  * Preload gesture model in background on page load.
- * Shows spinner → toggle swap when ready, or error on failure.
+ * Keeps retrying until successful, then swaps spinner → toggle.
  */
 async function preloadGestureModel() {
   if (!gestureController) return;
@@ -334,16 +334,17 @@ async function preloadGestureModel() {
   const loadingEl = document.getElementById('gesture-loading');
   const toggleWrapper = document.getElementById('gesture-toggle-wrapper');
 
-  try {
-    await gestureController.preload();
-    // Preload succeeded — swap spinner for toggle
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (toggleWrapper) toggleWrapper.classList.remove('gesture-toggle-hidden');
-  } catch (error) {
-    console.error('[gesture] preload failed:', error);
-    // Show error text in place of spinner
-    if (loadingEl) {
-      loadingEl.innerHTML = '<span class="gesture-loading-failed">加载失败</span>';
+  while (true) {
+    try {
+      await gestureController.preload();
+      // Preload succeeded — swap spinner for toggle
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (toggleWrapper) toggleWrapper.classList.remove('gesture-toggle-hidden');
+      return;
+    } catch (error) {
+      console.warn('[gesture] preload failed, retrying in 3s…', error);
+      // Wait 3 seconds then retry
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 }

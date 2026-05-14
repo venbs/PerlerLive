@@ -96,12 +96,6 @@ class GestureController {
     this.initPromise = new Promise((resolve, reject) => {
       this.resolveInit = resolve;
       this.rejectInit = reject;
-
-      // Timeout: reject if worker doesn't respond within 30 s
-      this.initTimer = setTimeout(() => {
-        reject(new Error('手势模型加载超时（30s）'));
-        this.clearInitHooks();
-      }, 30000);
     });
 
     console.log('[gesture] sending init, wasmRoot =', this.wasmRoot);

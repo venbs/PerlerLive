@@ -78,28 +78,22 @@ function stopHandLandmarker() {
 }
 
 function normalizeResult(result) {
-  const handCount = result?.landmarks?.length ?? 0;
-  if (handCount !== 1) {
+  const landmarksList = result?.landmarks ?? [];
+  const hands = landmarksList.map((landmarks, index) => {
+    const handedness = result.handedness?.[index]?.[0];
+    const center = getPalmCenter(landmarks);
     return {
-      handCount,
-      singleHand: false,
-      openPalm: false,
-      confidence: 0,
+      centerX: center.x,
+      centerY: center.y,
+      openPalm: isOpenPalm(landmarks),
+      confidence: handedness?.score ?? 0,
+      handedness: handedness?.categoryName ?? 'Unknown',
     };
-  }
-
-  const landmarks = result.landmarks[0];
-  const handedness = result.handedness?.[0]?.[0];
-  const center = getPalmCenter(landmarks);
+  });
 
   return {
-    handCount,
-    singleHand: true,
-    openPalm: isOpenPalm(landmarks),
-    centerX: center.x,
-    centerY: center.y,
-    confidence: handedness?.score ?? 0,
-    handedness: handedness?.categoryName ?? 'Unknown',
+    handCount: hands.length,
+    hands,
   };
 }
 

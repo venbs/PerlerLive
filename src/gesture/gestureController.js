@@ -7,6 +7,7 @@ const DEFAULT_CONFIG = {
   minDirectionStep: 0.003,
   directionDominance: 0.55,
   cooldownMs: 900,
+  activeHandSwitchDistance: 0.18,
 };
 
 export function createGestureController(options) {
@@ -37,6 +38,8 @@ class GestureController {
     this.timerId = null;
     this.track = [];
     this.cooldownUntil = 0;
+    this.lastFrameHands = [];
+    this.activeHandCenter = null;
 
     this.handleWorkerMessage = this.handleWorkerMessage.bind(this);
     this.handleWorkerCrash = this.handleWorkerCrash.bind(this);
@@ -65,6 +68,8 @@ class GestureController {
     this.resetTrack();
     this.cooldownUntil = 0;
     this.processInFlight = false;
+    this.lastFrameHands = [];
+    this.activeHandCenter = null;
 
     if (this.worker) {
       this.worker.postMessage({ type: 'stop' });
@@ -215,8 +220,11 @@ class GestureController {
 
   consumeDetection(result) {
     const config = this.readConfig();
+    const selectedHand = this.selectActiveHand(result.hands ?? []);
+    this.lastFrameHands = result.hands ?? [];
 
-    if (!result.singleHand || !result.openPalm) {
+    if (!selectedHand || !selectedHand.openPalm) {
+      this.activeHandCenter = null;
       this.resetTrack();
       return;
     }
@@ -227,10 +235,19 @@ class GestureController {
     }
 
     const point = {
-      x: 1 - result.centerX,
-      y: result.centerY,
+      x: 1 - selectedHand.centerX,
+      y: selectedHand.centerY,
       time: result.timestampMs,
     };
+
+    if (
+      this.activeHandCenter &&
+      distance(point, this.activeHandCenter) > config.activeHandSwitchDistance
+    ) {
+      this.resetTrack();
+    }
+
+    this.activeHandCenter = { x: point.x, y: point.y };
 
     this.track.push(point);
     if (this.track.length > config.trackWindowPoints) {
@@ -311,4 +328,73 @@ class GestureController {
       ...(typeof this.getConfig === 'function' ? this.getConfig() : null),
     };
   }
+
+  selectActiveHand(hands) {
+    if (!hands.length) return null;
+
+    const candidateHands = hands.filter((hand) => hand.openPalm);
+    const pool = candidateHands.length ? candidateHands : hands;
+    if (pool.length === 1) return pool[0];
+
+    let bestHand = pool[0];
+    let bestMotion = -1;
+    let bestContinuityDistance = Infinity;
+
+    for (const hand of pool) {
+      const motion = this.measureHandMotion(hand);
+      const continuityDistance = this.activeHandCenter
+        ? distance(
+            { x: 1 - hand.centerX, y: hand.centerY },
+            this.activeHandCenter
+          )
+        : Infinity;
+
+      if (motion > bestMotion + 0.002) {
+        bestHand = hand;
+        bestMotion = motion;
+        bestContinuityDistance = continuityDistance;
+        continue;
+      }
+
+      if (Math.abs(motion - bestMotion) <= 0.002) {
+        if (continuityDistance < bestContinuityDistance) {
+          bestHand = hand;
+          bestMotion = motion;
+          bestContinuityDistance = continuityDistance;
+          continue;
+        }
+
+        if (
+          continuityDistance === bestContinuityDistance &&
+          hand.confidence > bestHand.confidence
+        ) {
+          bestHand = hand;
+          bestMotion = motion;
+        }
+      }
+    }
+
+    return bestHand;
+  }
+
+  measureHandMotion(hand) {
+    if (!this.lastFrameHands.length) return 0;
+
+    let smallestDistance = Infinity;
+    for (const previousHand of this.lastFrameHands) {
+      smallestDistance = Math.min(
+        smallestDistance,
+        distance(
+          { x: hand.centerX, y: hand.centerY },
+          { x: previousHand.centerX, y: previousHand.centerY }
+        )
+      );
+    }
+
+    return smallestDistance === Infinity ? 0 : smallestDistance;
+  }
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }

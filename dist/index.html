@@ -8,8 +8,8 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>PerlerLive</title>
   <meta name="theme-color" content="#ffffff">
-  <script type="module" crossorigin src="/PerlerLive/assets/index-BO454-r5.js"></script>
-  <link rel="stylesheet" crossorigin href="/PerlerLive/assets/index-93cR24h4.css">
+  <script type="module" crossorigin src="/PerlerLive/assets/index-DCVpZ88A.js"></script>
+  <link rel="stylesheet" crossorigin href="/PerlerLive/assets/index-CNTMqwNG.css">
 <link rel="manifest" href="/PerlerLive/manifest.webmanifest"></head>
 
 <body>
@@ -23,7 +23,10 @@
   </div>
 
   <!-- Desktop Floating UI Panel -->
-  <div id="ui-panel">
+  <div
+    id="ui-panel"
+    style="backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);"
+  >
     <!-- Logo -->
     <div class="logo">
       <img src="/PerlerLive/assets/PerlerLive-1EkPRKPy.svg" alt="PerlerLive Logo" />
@@ -47,7 +50,12 @@
 
     <div class="control-group inline" data-mobile-group="gesture-control">
       <label for="gesture-toggle">挥手切换</label>
-      <label class="toggle-switch" for="gesture-toggle">
+      <!-- Loading spinner shown while model preloads -->
+      <div class="gesture-loading" id="gesture-loading">
+        <div class="gesture-loading-spinner"></div>
+      </div>
+      <!-- Toggle hidden until model is ready -->
+      <label class="toggle-switch gesture-toggle-hidden" id="gesture-toggle-wrapper" for="gesture-toggle">
         <input type="checkbox" id="gesture-toggle" />
         <span class="toggle-slider"></span>
       </label>
@@ -141,7 +149,10 @@
     </button>
   </nav>
 
-  <div id="toast"></div>
+  <div
+    id="toast"
+    style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);"
+  ></div>
 </body>
 
 </html>

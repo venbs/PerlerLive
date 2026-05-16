@@ -174,6 +174,7 @@ export const PALETTES = {
 
 export const PALETTE_KEYS = Object.keys(PALETTES);
 const DEFAULT_PALETTE_KEY = 'underwater';
+const CAMERA_STORAGE_KEY = 'perlerlive-camera-device-id';
 
 // =============================================
 // Active Palette & LUT
@@ -246,6 +247,9 @@ export function getCurrentPaletteIndex() {
 // Global state
 export const AppState = {
   videoCapture: null,
+  videoDevices: [],
+  currentVideoDeviceId: '',
+  cameraError: null,
   resolution: 64,
   perlerRadius: 50,
   perlerGap: 0.5, // Absolute gap size 0-3px
@@ -261,9 +265,15 @@ export const AppState = {
   gestureMaxVerticalRatio: 0.45,
   gestureDirectionDominance: 0.55,
   gestureCooldownMs: 900,
+  autoSwitchEnabled: false,
+  autoSwitchInterval: 5.0,
   currentPaletteKey: DEFAULT_PALETTE_KEY,
   currentPaletteIndex: PALETTE_KEYS.indexOf(DEFAULT_PALETTE_KEY),
   onPaletteChange: null,
+  onVideoDevicesChange: null,
+  retryVideoCapture: null,
+  refreshVideoDevices: null,
+  switchVideoDevice: null,
 };
 
 const isMobile = () => window.innerWidth <= 768;
@@ -280,6 +290,8 @@ export function setupP5() {
   let offsetY = 0;
 
   const sketch = (p) => {
+    let deviceChangeHandlerBound = false;
+
     p.setup = () => {
       // Reduce pixel density on mobile for better performance
       if (isMobile()) {
@@ -295,9 +307,11 @@ export function setupP5() {
 
       AppState.exportSVG = exportManualSVG;
 
-      // Start Video Capture
-      AppState.videoCapture = p.createCapture(p.VIDEO);
-      AppState.videoCapture.hide();
+      AppState.retryVideoCapture = initializeVideoCapture;
+      AppState.refreshVideoDevices = refreshVideoDevices;
+      AppState.switchVideoDevice = switchVideoDevice;
+
+      initializeVideoCapture();
 
       function loopProcess() {
         if (AppState.videoCapture && AppState.videoCapture.loadedmetadata) {
@@ -323,12 +337,220 @@ export function setupP5() {
       p.redraw();
     };
 
+    async function initializeVideoCapture() {
+      const savedDeviceId = loadPreferredCameraDeviceId();
+
+      try {
+        await startVideoCapture(savedDeviceId || '');
+      } catch (error) {
+        console.warn('[camera] failed to restore preferred device, falling back to default', error);
+        try {
+          await startVideoCapture('');
+        } catch (fallbackError) {
+          setCameraError(fallbackError);
+          await refreshVideoDevices().catch(() => []);
+          p.redraw();
+          return;
+        }
+      }
+
+      if (navigator.mediaDevices?.addEventListener && !deviceChangeHandlerBound) {
+        navigator.mediaDevices.addEventListener('devicechange', refreshVideoDevices);
+        deviceChangeHandlerBound = true;
+      }
+    }
+
+    async function switchVideoDevice(deviceId = '') {
+      const currentDeviceId = getActiveVideoDeviceId();
+      if (deviceId && currentDeviceId === deviceId) {
+        return AppState.videoCapture;
+      }
+
+      return startVideoCapture(deviceId);
+    }
+
+    async function startVideoCapture(deviceId = '') {
+      const nextCapture = await createVideoCapture(deviceId);
+      const previousCapture = AppState.videoCapture;
+
+      AppState.videoCapture = nextCapture;
+      AppState.cameraError = null;
+      AppState.currentVideoDeviceId = getCaptureDeviceId(nextCapture) || deviceId || '';
+      if (AppState.currentVideoDeviceId) {
+        savePreferredCameraDeviceId(AppState.currentVideoDeviceId);
+      }
+
+      if (previousCapture?.remove) {
+        previousCapture.remove();
+      }
+
+      await refreshVideoDevices();
+      p.redraw();
+      return nextCapture;
+    }
+
+    function setCameraError(error) {
+      AppState.videoCapture = null;
+      AppState.currentVideoDeviceId = '';
+      AppState.cameraError = {
+        name: error?.name || 'CameraError',
+        message: error?.message || '无法访问摄像头',
+      };
+      hideLoading();
+    }
+
+    async function createVideoCapture(deviceId = '') {
+      const constraints = {
+        audio: false,
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const videoElt = document.createElement('video');
+      videoElt.style.position = 'fixed';
+      videoElt.style.width = '1px';
+      videoElt.style.height = '1px';
+      videoElt.style.opacity = '0';
+      videoElt.style.pointerEvents = 'none';
+      videoElt.style.left = '-9999px';
+      videoElt.style.top = '0';
+      videoElt.setAttribute('playsinline', '');
+      videoElt.setAttribute('muted', '');
+      videoElt.setAttribute('autoplay', '');
+      videoElt.playsInline = true;
+      videoElt.muted = true;
+      videoElt.autoplay = true;
+      videoElt.srcObject = stream;
+      document.body.appendChild(videoElt);
+
+      await waitForVideoMetadata(videoElt);
+
+      return {
+        elt: videoElt,
+        hide() {},
+        remove() {
+          stream.getTracks().forEach((track) => track.stop());
+          videoElt.pause();
+          videoElt.srcObject = null;
+          videoElt.remove();
+        },
+        get loadedmetadata() {
+          return videoElt.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+        },
+      };
+    }
+
+    async function waitForVideoMetadata(videoElt) {
+      if (videoElt.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        await videoElt.play().catch(() => {});
+        return;
+      }
+
+      await new Promise((resolve, reject) => {
+        const handleLoaded = async () => {
+          cleanup();
+          await videoElt.play().catch(() => {});
+          resolve();
+        };
+
+        const handleError = () => {
+          cleanup();
+          reject(new Error('视频流元数据加载失败'));
+        };
+
+        const cleanup = () => {
+          videoElt.removeEventListener('loadeddata', handleLoaded);
+          videoElt.removeEventListener('error', handleError);
+        };
+
+        videoElt.addEventListener('loadeddata', handleLoaded, { once: true });
+        videoElt.addEventListener('error', handleError, { once: true });
+      });
+    }
+
+    async function refreshVideoDevices() {
+      if (!navigator.mediaDevices?.enumerateDevices) {
+        AppState.videoDevices = [];
+        notifyVideoDevicesChange();
+        return [];
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices
+        .filter((device) => device.kind === 'videoinput')
+        .map((device, index) => ({
+          deviceId: device.deviceId,
+          groupId: device.groupId,
+          label: device.label,
+          index,
+        }));
+
+      AppState.videoDevices = decorateCameraLabels(cameras);
+      AppState.currentVideoDeviceId = getActiveVideoDeviceId() || AppState.currentVideoDeviceId;
+      notifyVideoDevicesChange();
+      return AppState.videoDevices;
+    }
+
+    function notifyVideoDevicesChange() {
+      if (typeof AppState.onVideoDevicesChange === 'function') {
+        AppState.onVideoDevicesChange({
+          devices: AppState.videoDevices,
+          currentDeviceId: AppState.currentVideoDeviceId,
+        });
+      }
+    }
+
+    function getActiveVideoDeviceId() {
+      return getCaptureDeviceId(AppState.videoCapture);
+    }
+
+    function getCaptureDeviceId(capture) {
+      return capture?.elt?.srcObject
+        ?.getVideoTracks?.()[0]
+        ?.getSettings?.()
+        ?.deviceId || '';
+    }
+
+    function decorateCameraLabels(cameras) {
+      const labelCounts = cameras.reduce((map, camera) => {
+        const baseLabel = camera.label?.trim() || `摄像头 ${camera.index + 1}`;
+        map.set(baseLabel, (map.get(baseLabel) || 0) + 1);
+        return map;
+      }, new Map());
+
+      return cameras.map((camera) => {
+        const baseLabel = camera.label?.trim() || `摄像头 ${camera.index + 1}`;
+        const shortId = camera.deviceId ? camera.deviceId.slice(-6) : `${camera.index + 1}`;
+        return {
+          ...camera,
+          displayLabel:
+            labelCounts.get(baseLabel) > 1
+              ? `${baseLabel} · ${shortId}`
+              : baseLabel,
+        };
+      });
+    }
+
+    function loadPreferredCameraDeviceId() {
+      try {
+        return window.localStorage.getItem(CAMERA_STORAGE_KEY) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    function savePreferredCameraDeviceId(deviceId) {
+      try {
+        window.localStorage.setItem(CAMERA_STORAGE_KEY, deviceId);
+      } catch {
+        // ignore storage failures
+      }
+    }
+
     function processImage() {
       if (!AppState.videoCapture || !AppState.videoCapture.loadedmetadata) return;
       const videoElt = AppState.videoCapture.elt;
       if (videoElt.videoWidth === 0 || videoElt.videoHeight === 0) return;
-
-      const img = AppState.videoCapture;
 
       // Calculate target resolution
       const maxRes = AppState.resolution;
@@ -350,11 +572,12 @@ export function setupP5() {
       pg.pixelDensity(1);
       // Mirror once at the low-resolution sampling stage so preview and exports
       // all share the same flipped processedData without paying a high-res cost.
-      pg.push();
-      pg.translate(w, 0);
-      pg.scale(-1, 1);
-      pg.image(img, 0, 0, w, h);
-      pg.pop();
+      const pgCtx = pg.drawingContext;
+      pgCtx.save();
+      pgCtx.translate(w, 0);
+      pgCtx.scale(-1, 1);
+      pgCtx.drawImage(videoElt, 0, 0, w, h);
+      pgCtx.restore();
       pg.loadPixels();
 
       // Brighten purely black pixels
@@ -414,6 +637,22 @@ export function setupP5() {
         p.textSize(24);
         p.noStroke();
         p.fill(120);
+
+        if (AppState.cameraError) {
+          const title = AppState.cameraError.name === 'NotAllowedError'
+            ? '需要摄像头权限'
+            : '摄像头不可用';
+          const detail = AppState.cameraError.name === 'NotAllowedError'
+            ? '请允许浏览器访问摄像头，然后点击刷新按钮重试'
+            : '请检查摄像头连接后点击刷新按钮重试';
+
+          p.text(title, p.width / 2, p.height / 2 - 16);
+          p.textSize(14);
+          p.fill(150);
+          p.text(detail, p.width / 2, p.height / 2 + 16);
+          return;
+        }
+
         p.text("加载中...", p.width / 2, p.height / 2);
         return;
       }
@@ -548,7 +787,7 @@ export function setupP5() {
 
     };
 
-    function exportManualSVG(showToast) {
+    function exportManualSVG() {
       if (!processedData) return;
 
       const { cols, rows, pixels } = processedData;
@@ -632,10 +871,9 @@ export function setupP5() {
 
       const svgString = parts.join('\n');
       navigator.clipboard.writeText(svgString).then(() => {
-        if (showToast) showToast('SVG 已复制到剪贴板');
+        // SVG copied
       }).catch(err => {
         console.error('\u65e0\u6cd5\u590d\u5236SVG:', err);
-        if (showToast) showToast('\u590d\u5236\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u6d4f\u89c8\u5668\u6743\u9650');
       });
     }
   };

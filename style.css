@@ -330,6 +330,66 @@ input[type="number"]:focus {
   background: white;
 }
 
+.select-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.select-input {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.select-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: #ffffff;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+
+.icon-button:active {
+  transform: scale(0.97);
+}
+
+.icon-button:disabled,
+.select-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .style-row {
   display: flex;
   flex-direction: column;
@@ -498,32 +558,6 @@ input[type="number"]:focus {
 }
 
 
-/* Toast notification */
-#toast {
-  position: fixed;
-  bottom: 48px;
-  left: 50%;
-  transform: translateX(-50%) translateY(12px);
-  background: rgba(0, 0, 0, 0.75);
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-family: var(--font-family);
-  letter-spacing: 0.02em;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  white-space: nowrap;
-}
-
-#toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 
 /* ==========================================================
    MOBILE RESPONSIVE — Bottom Tab Bar + Sheet Layout
@@ -718,8 +752,4 @@ input[type="number"]:focus {
     font-size: 13px;
   }
 
-  /* Toast above tab bar */
-  #toast {
-    bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
-  }
 }

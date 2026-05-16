@@ -13,6 +13,9 @@ let gestureController = null;
 let gestureToggleInput = null;
 let gestureSettingsGroup = null;
 const paletteButtons = new Map();
+let autoSwitchTimer = null;
+let cameraSelectInput = null;
+let cameraRefreshButton = null;
 
 // Setup PWA
 const updateSW = registerSW({
@@ -81,9 +84,15 @@ function setupUI() {
 
   const pngBtn = document.getElementById('export-png-btn');
   const svgBtn = document.getElementById('export-svg-btn');
+  cameraSelectInput = document.getElementById('camera-select');
+  cameraRefreshButton = document.getElementById('camera-refresh-btn');
 
   gestureToggleInput = document.getElementById('gesture-toggle');
   gestureSettingsGroup = document.getElementById('gesture-settings-group');
+  const autoSwitchToggleInput = document.getElementById('auto-switch-toggle');
+  const autoSwitchSettingsGroup = document.getElementById('auto-switch-settings-group');
+  const autoSwitchIntervalInput = document.getElementById('auto-switch-interval');
+  const autoSwitchIntervalVal = document.getElementById('auto-switch-interval-val');
   const gestureFpsInput = document.getElementById('gesture-fps');
   const gestureFpsVal = document.getElementById('gesture-fps-val');
   const gestureTravelInput = document.getElementById('gesture-travel');
@@ -98,6 +107,8 @@ function setupUI() {
   // On mobile, use 'change' (fire on release) instead of 'input' (fire on drag)
   const sliderEvent = isMobile() ? 'change' : 'input';
 
+  setupCameraControls();
+
   let resTimeout;
   resInput.addEventListener('input', (e) => {
     clearTimeout(resTimeout);
@@ -105,7 +116,7 @@ function setupUI() {
       let val = parseInt(e.target.value, 10);
       if (isNaN(val)) val = 64; // fallback to default
       if (val < 16) val = 16;
-      if (val > 128) val = 128;
+      if (val > 256) val = 256;
 
       e.target.value = val; // visually reflect clamped value
       if (resVal) resVal.textContent = `${val}px`;
@@ -146,7 +157,7 @@ function setupUI() {
   });
 
   svgBtn.addEventListener('click', () => {
-    if (AppState.exportSVG) AppState.exportSVG(showToast);
+    if (AppState.exportSVG) AppState.exportSVG();
   });
 
   gestureFpsInput.value = String(AppState.gestureSampleFps);
@@ -189,7 +200,173 @@ function setupUI() {
   });
 
   syncGestureSettingsVisibility(AppState.gestureEnabled);
+
+  autoSwitchIntervalInput.value = String(AppState.autoSwitchInterval);
+  autoSwitchIntervalVal.textContent = `${AppState.autoSwitchInterval.toFixed(1)}s`;
+
+  autoSwitchIntervalInput.addEventListener(sliderEvent, (e) => {
+    AppState.autoSwitchInterval = parseFloat(e.target.value);
+    autoSwitchIntervalVal.textContent = `${AppState.autoSwitchInterval.toFixed(1)}s`;
+    if (AppState.autoSwitchEnabled) {
+      startAutoSwitch();
+    }
+  });
+
+  autoSwitchToggleInput.checked = AppState.autoSwitchEnabled;
+  autoSwitchToggleInput.addEventListener('change', (e) => {
+    AppState.autoSwitchEnabled = e.target.checked;
+    syncAutoSwitchSettingsVisibility(AppState.autoSwitchEnabled);
+    if (AppState.autoSwitchEnabled) {
+      startAutoSwitch();
+    } else {
+      stopAutoSwitch();
+    }
+  });
+
+  syncAutoSwitchSettingsVisibility(AppState.autoSwitchEnabled);
+
+  function syncAutoSwitchSettingsVisibility(visible) {
+    if (!autoSwitchSettingsGroup) return;
+    autoSwitchSettingsGroup.classList.toggle('is-collapsed', !visible);
+  }
+
+  function startAutoSwitch() {
+    stopAutoSwitch();
+    autoSwitchTimer = setInterval(() => {
+      stepPalette(1, 'auto');
+    }, AppState.autoSwitchInterval * 1000);
+  }
+
+  function stopAutoSwitch() {
+    if (autoSwitchTimer) {
+      clearInterval(autoSwitchTimer);
+      autoSwitchTimer = null;
+    }
+  }
+
   setupPalettePresets();
+}
+
+function setupCameraControls() {
+  if (!cameraSelectInput || !cameraRefreshButton) return;
+
+  AppState.onVideoDevicesChange = ({ devices, currentDeviceId }) => {
+    renderCameraOptions(devices, currentDeviceId);
+  };
+
+  cameraSelectInput.addEventListener('change', async (event) => {
+    const targetDeviceId = event.target.value;
+    await switchCameraFromUI(targetDeviceId);
+  });
+
+  cameraRefreshButton.addEventListener('click', async () => {
+    cameraRefreshButton.disabled = true;
+    try {
+      if (AppState.cameraError || !AppState.videoCapture) {
+        await AppState.retryVideoCapture?.();
+      }
+      await AppState.refreshVideoDevices?.();
+    } finally {
+      cameraRefreshButton.disabled = false;
+    }
+  });
+
+  renderCameraOptions(AppState.videoDevices, AppState.currentVideoDeviceId);
+  registerCameraConsoleAPI();
+}
+
+function renderCameraOptions(devices = [], currentDeviceId = '') {
+  if (!cameraSelectInput) return;
+
+  const previousValue = currentDeviceId || cameraSelectInput.value;
+  cameraSelectInput.innerHTML = '';
+
+  if (!devices.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = AppState.cameraError?.name === 'NotAllowedError'
+      ? '摄像头权限被拒绝'
+      : '等待摄像头权限…';
+    cameraSelectInput.appendChild(option);
+    cameraSelectInput.disabled = true;
+    return;
+  }
+
+  devices.forEach((device, index) => {
+    const option = document.createElement('option');
+    option.value = device.deviceId;
+    option.textContent = device.displayLabel || device.label || `摄像头 ${index + 1}`;
+    cameraSelectInput.appendChild(option);
+  });
+
+  const fallbackDeviceId = devices[0]?.deviceId || '';
+  cameraSelectInput.value = devices.some((device) => device.deviceId === previousValue)
+    ? previousValue
+    : fallbackDeviceId;
+  cameraSelectInput.disabled = false;
+}
+
+async function switchCameraFromUI(deviceId) {
+  if (!cameraSelectInput) return;
+
+  cameraSelectInput.disabled = true;
+  if (cameraRefreshButton) cameraRefreshButton.disabled = true;
+
+  try {
+    await AppState.switchVideoDevice?.(deviceId);
+  } catch (error) {
+    console.error('[camera] switch failed', error);
+    renderCameraOptions(AppState.videoDevices, AppState.currentVideoDeviceId);
+  } finally {
+    cameraSelectInput.disabled = AppState.videoDevices.length === 0;
+    if (cameraRefreshButton) cameraRefreshButton.disabled = false;
+  }
+}
+
+function registerCameraConsoleAPI() {
+  window.PerlerLiveCamera = {
+    list() {
+      return AppState.videoDevices.map((device, index) => ({
+        index,
+        label: device.displayLabel || device.label || `摄像头 ${index + 1}`,
+        rawLabel: device.label,
+        deviceId: device.deviceId,
+        groupId: device.groupId,
+        active: device.deviceId === AppState.currentVideoDeviceId,
+      }));
+    },
+    current() {
+      return {
+        currentDeviceId: AppState.currentVideoDeviceId,
+        devices: this.list(),
+      };
+    },
+    async refresh() {
+      if (AppState.cameraError || !AppState.videoCapture) {
+        await AppState.retryVideoCapture?.();
+      }
+      await AppState.refreshVideoDevices?.();
+      return this.current();
+    },
+    async use(device) {
+      if (AppState.cameraError && (device === undefined || device === null || device === '')) {
+        await AppState.retryVideoCapture?.();
+        await AppState.refreshVideoDevices?.();
+        return this.current();
+      }
+      if (typeof device === 'number') {
+        const target = AppState.videoDevices[device];
+        if (!target) {
+          throw new Error(`No camera at index ${device}`);
+        }
+        await AppState.switchVideoDevice?.(target.deviceId);
+      } else {
+        await AppState.switchVideoDevice?.(device || '');
+      }
+
+      return this.current();
+    },
+  };
 }
 
 function setupPalettePresets() {
@@ -246,7 +423,6 @@ function selectPaletteByKey(key, source = 'ui') {
   if (!PALETTES[key]) return false;
   const didSwitch = switchPalette(key, source);
   if (!didSwitch) return false;
-  showToast(`已切换：${PALETTES[key].name}`);
   return true;
 }
 
@@ -295,7 +471,7 @@ function setupGestureController() {
         gestureToggleInput.disabled = false;
       }
       syncGestureSettingsVisibility(false);
-      showToast(message);
+      console.error(message);
     },
   });
 
@@ -371,7 +547,10 @@ function setupMobile() {
 
   moveChildren(uiPanel, panels.import, [
     '[data-mobile-group="import-resolution"]',
+    '[data-mobile-group="camera-select"]',
     '[data-mobile-group="palette-preset"]',
+    '[data-mobile-group="auto-switch-control"]',
+    '[data-mobile-group="auto-switch-settings"]',
     '[data-mobile-group="gesture-control"]',
     '[data-mobile-group="gesture-settings"]',
   ]);
@@ -482,15 +661,7 @@ export function hideLoading() {
 // =============================================
 // Shared utilities
 // =============================================
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  clearTimeout(toast._hideTimer);
-  toast._hideTimer = setTimeout(() => {
-    toast.classList.remove('show');
-  }, 2000);
-}
+
 
 function requestUpdate() {
   if (AppState.triggerUpdate) {

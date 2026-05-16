@@ -250,10 +250,10 @@ export const AppState = {
   videoDevices: [],
   currentVideoDeviceId: '',
   cameraError: null,
-  resolution: 64,
+  resolution: 256,
   perlerRadius: 50,
-  perlerGap: 0.5, // Absolute gap size 0-3px
-  bevelSize: 10, // Bevel stroke thickness 0-20%
+  perlerGap: 0, // Absolute gap size 0-3px
+  bevelSize: 0, // Bevel stroke thickness 0-20%
   holeSize: 40, // Percentage 0-60
   triggerUpdate: null,
   triggerRedraw: null,
@@ -265,7 +265,7 @@ export const AppState = {
   gestureMaxVerticalRatio: 0.45,
   gestureDirectionDominance: 0.55,
   gestureCooldownMs: 900,
-  autoSwitchEnabled: false,
+  autoSwitchEnabled: true,
   autoSwitchInterval: 5.0,
   currentPaletteKey: DEFAULT_PALETTE_KEY,
   currentPaletteIndex: PALETTE_KEYS.indexOf(DEFAULT_PALETTE_KEY),

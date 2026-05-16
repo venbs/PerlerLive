@@ -8,7 +8,7 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>PerlerLive</title>
   <meta name="theme-color" content="#ffffff">
-  <script type="module" crossorigin src="/PerlerLive/assets/index-4q2GpngT.js"></script>
+  <script type="module" crossorigin src="/PerlerLive/assets/index-DRdiaiGg.js"></script>
   <link rel="stylesheet" crossorigin href="/PerlerLive/assets/index-DpauZY0v.css">
 <link rel="manifest" href="/PerlerLive/manifest.webmanifest"></head>
 
@@ -25,6 +25,7 @@
   <!-- Desktop Floating UI Panel -->
   <div
     id="ui-panel"
+    class="hide-panel"
     style="backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);"
   >
     <!-- Logo -->
@@ -35,7 +36,7 @@
     <!-- Controls -->
     <div class="control-group inline" data-mobile-group="import-resolution">
       <label>分辨率</label>
-      <input type="number" id="resolution" min="16" max="256" value="64" />
+      <input type="number" id="resolution" min="16" max="256" value="256" />
     </div>
 
     <div class="control-group" data-mobile-group="camera-select">
@@ -69,7 +70,7 @@
     <div class="control-group inline" data-mobile-group="auto-switch-control">
       <label for="auto-switch-toggle">自动切换</label>
       <label class="toggle-switch" for="auto-switch-toggle">
-        <input type="checkbox" id="auto-switch-toggle" />
+        <input type="checkbox" id="auto-switch-toggle" checked />
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -136,12 +137,12 @@
         <input type="range" id="border-radius" min="0" max="100" value="50" />
       </div>
       <div class="style-row">
-        <label>厚度 <span class="val" id="bevel-size-val">10%</span></label>
-        <input type="range" id="bevel-size" min="0" max="20" value="10" step="1" />
+        <label>厚度 <span class="val" id="bevel-size-val">0%</span></label>
+        <input type="range" id="bevel-size" min="0" max="20" value="0" step="1" />
       </div>
       <div class="style-row">
-        <label>间隔 <span class="val" id="gap-size-val">0.5px</span></label>
-        <input type="range" id="gap-size" min="0" max="3" value="0.5" step="0.5" />
+        <label>间隔 <span class="val" id="gap-size-val">0px</span></label>
+        <input type="range" id="gap-size" min="0" max="3" value="0" step="0.5" />
       </div>
       <div class="style-row">
         <label>豆心 <span class="val" id="hole-size-val">40%</span></label>

@@ -224,6 +224,9 @@ function setupUI() {
   });
 
   syncAutoSwitchSettingsVisibility(AppState.autoSwitchEnabled);
+  if (AppState.autoSwitchEnabled) {
+    startAutoSwitch();
+  }
 
   function syncAutoSwitchSettingsVisibility(visible) {
     if (!autoSwitchSettingsGroup) return;
